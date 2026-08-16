@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Sun, Cloud, Droplets, Wind, Eye, Thermometer, MapPin, ChevronRight, Bell, CloudRain, Sunset, Sunrise, AlertTriangle, RefreshCw, Navigation, Loader2 } from 'lucide-react';
 import { useEonetEvents, useOpenMeteo } from '../hooks/useData';
-import { districts, findNearestDistrict } from '../data/districts';
+import { findNearestDistrict } from '../data/districts';
 import { getWeatherCodeInfo, formatRelativeTime } from '../utils/helpers';
 import WeatherChart from '../components/WeatherChart';
 import LiveMapMini from '../components/LiveMapMini';
@@ -36,18 +36,16 @@ function saveLocationToStorage(loc: SavedLocation) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(loc)); } catch {}
 }
 
-function reverseGeocode(lat: number, lng: number): Promise<{ isWB: boolean; district: string }> {
+function reverseGeocode(lat: number, lng: number): Promise<boolean> {
   return fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=bn&zoom=10`, {
     headers: { 'User-Agent': 'BanglaMausamWatch/1.0' },
   })
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(data => {
-      const addr = data.address || {};
-      const isWB = (addr.state || '').includes('পশ্চিমবঙ্গ') || (addr.state || '').toLowerCase().includes('west bengal');
-      const district = addr.district || addr.county || addr.state_district || '';
-      return { isWB, district };
+      const state = (data.address || {}).state || '';
+      return state.includes('পশ্চিমবঙ্গ') || state.toLowerCase().includes('west bengal');
     })
-    .catch(() => ({ isWB: false, district: '' }));
+    .catch(() => false);
 }
 
 function ipGeolocate(): Promise<{ lat: number; lng: number } | null> {
@@ -55,17 +53,6 @@ function ipGeolocate(): Promise<{ lat: number; lng: number } | null> {
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(d => d.latitude && d.longitude ? { lat: d.latitude, lng: d.longitude } : null)
     .catch(() => null);
-}
-
-function matchDistrict(name: string): { en: string; bn: string } | null {
-  if (!name) return null;
-  const low = name.toLowerCase();
-  for (const d of districts) {
-    if (d.namebn.includes(name) || name.includes(d.namebn) || d.name.toLowerCase().includes(low) || low.includes(d.name.toLowerCase())) {
-      return { en: d.name, bn: d.namebn };
-    }
-  }
-  return null;
 }
 
 export default function Home() {
@@ -122,16 +109,13 @@ export default function Home() {
   const recentUpdated = lastUpdated ? formatRelativeTime(lastUpdated.toISOString()) : '';
 
   const applyLocation = async (lat: number, lng: number) => {
-    const { isWB, district } = await reverseGeocode(lat, lng);
+    const isWB = await reverseGeocode(lat, lng);
     const nearest = findNearestDistrict(lat, lng);
-    const matched = matchDistrict(district);
-    const dName = matched?.en || district || nearest.name;
-    const dBn = matched?.bn || nearest.namebn;
     setUserLocation({ lat, lng });
-    setUserDistrict(dName);
-    setUserDistrictBn(dBn);
+    setUserDistrict(nearest.name);
+    setUserDistrictBn(nearest.namebn);
     setOutsideWB(!isWB);
-    saveLocationToStorage({ lat, lng, districtName: dName, districtNameBn: dBn, timestamp: Date.now() });
+    saveLocationToStorage({ lat, lng, districtName: nearest.name, districtNameBn: nearest.namebn, timestamp: Date.now() });
   };
 
   const handleMyLocation = () => {

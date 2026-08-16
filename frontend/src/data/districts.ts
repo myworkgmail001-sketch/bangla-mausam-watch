@@ -33,7 +33,7 @@ export function findNearestDistrict(lat: number, lng: number): District {
   let minDist = Infinity;
   let nearest = districts[0];
   for (const d of districts) {
-    const dist = Math.sqrt(Math.pow(d.lat - lat, 2) + Math.pow(d.lng - lng, 2));
+    const dist = haversineDistance(lat, lng, d.lat, d.lng);
     if (dist < minDist) {
       minDist = dist;
       nearest = d;
