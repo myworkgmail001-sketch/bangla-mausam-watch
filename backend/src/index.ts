@@ -183,7 +183,7 @@ async function pollEonet() {
   try {
     const res = await fetch(`${EONET_BASE}/events?status=open&days=1&bbox=${WB_BBOX}&limit=50`);
     if (!res.ok) return;
-    const data = await res.json();
+    const data: any = await res.json();
     const events = data.events || [];
 
     for (const event of events) {
@@ -252,6 +252,25 @@ cron.schedule('*/5 * * * *', pollEonet);
 
 // Process retry queue every minute
 cron.schedule('* * * * *', processRetryQueue);
+
+// ─── EONET Proxy (CORS bypass) ───
+
+app.get('/api/eonet', async (_req, res) => {
+  try {
+    const eonetRes = await fetch(
+      `${EONET_BASE}/events/geojson?status=open&days=7&bbox=${WB_BBOX}`,
+      { headers: { Accept: 'application/json' } }
+    );
+    if (!eonetRes.ok) {
+      return res.status(eonetRes.status).json({ error: 'EONET fetch failed' });
+    }
+    const data = await eonetRes.json();
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: 'EONET proxy error' });
+  }
+});
 
 // ─── Health Check ───
 

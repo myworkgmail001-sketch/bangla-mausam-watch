@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Sun, Cloud, Droplets, Wind, Eye, Thermometer, MapPin, ChevronRight, Bell, CloudRain, Sunset, Sunrise, AlertTriangle } from 'lucide-react';
+import { Sun, Cloud, Droplets, Wind, Eye, Thermometer, MapPin, ChevronRight, Bell, CloudRain, Sunset, Sunrise, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useEonetEvents, useOpenMeteo, useGeolocation } from '../hooks/useData';
 import { districts, findNearestDistrict } from '../data/districts';
 import { getWeatherCodeInfo, getCategoryIcon, getSeverityColor, formatRelativeTime } from '../utils/helpers';
@@ -13,8 +13,8 @@ export default function Home() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { location } = useGeolocation();
-  const { current, hourly, daily, loading: weatherLoading } = useOpenMeteo(location?.lat || 22.57, location?.lng || 88.36);
-  const { events, loading: eventsLoading, lastUpdated } = useEonetEvents();
+  const { current, hourly, daily, loading: weatherLoading, error: weatherError, refetch: refetchWeather } = useOpenMeteo(location?.lat || 22.57, location?.lng || 88.36);
+  const { events, loading: eventsLoading, error: eventsError, lastUpdated, refetch: refetchEvents } = useEonetEvents();
 
   const nearestDistrict = location ? findNearestDistrict(location.lat, location.lng) : districts[0];
   const weatherInfo = current ? getWeatherCodeInfo(current.weatherCode) : null;
@@ -44,9 +44,14 @@ export default function Home() {
                 {weatherLoading ? '--' : Math.round(current?.temperature || 0)}
               </span>
               <span className="text-xl text-heading/60">°C</span>
+              {weatherError && !weatherLoading && (
+                <button onClick={refetchWeather} className="ml-2 p-1 rounded-full hover:bg-white/50 transition-colors" title="Retry">
+                  <RefreshCw className="w-3.5 h-3.5 text-primary-400" />
+                </button>
+              )}
             </div>
             <p className="text-sm text-body mt-0.5">
-              {weatherInfo ? weatherInfo.condition : t('common.loading')}
+              {weatherInfo ? weatherInfo.condition : weatherLoading ? t('common.loading') : t('common.unavailable')}
             </p>
             <p className="text-xs text-body/60 mt-1">
               {t('home.feels_like')}: {weatherLoading ? '--' : Math.round(current?.feelsLike || 0)}°C
@@ -119,12 +124,18 @@ export default function Home() {
             </div>
             <div>
               <p className="text-sm font-semibold text-heading">
-                {activeEvents.length} {t('home.events_near')}
+                {eventsLoading ? t('common.loading') : `${activeEvents.length} ${t('home.events_near')}`}
               </p>
               <p className="text-xs text-body/60">{t('home.live_map')}</p>
             </div>
           </div>
-          <ChevronRight className="w-5 h-5 text-gray-400" />
+          {eventsError && !eventsLoading ? (
+            <button onClick={(e) => { e.stopPropagation(); refetchEvents(); }} className="p-1.5 rounded-full hover:bg-white/50">
+              <RefreshCw className="w-4 h-4 text-primary-400" />
+            </button>
+          ) : (
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          )}
         </div>
       </section>
 

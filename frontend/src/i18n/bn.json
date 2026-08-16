@@ -128,7 +128,36 @@
     "notification_settings": "নোটিফিকেশন সেটিংস",
     "subscribed_district": "সাবস্ক্রাইব করা জেলা",
     "event_types": "ঘটনার ধরন",
-    "unsubscribe": "আনসাবস্ক্রাইব"
+    "unsubscribe": "আনসাবস্ক্রাইব",
+    "pushNotifications": "পুশ নোটিফিকেশন",
+    "pushDescription": "আপনার জেলায় দুর্যোগ সম্পর্কে সূচিত হোন",
+    "selectDistrict": "আপনার জেলা নির্বাচন করুন",
+    "chooseDistrict": "একটি জেলা নির্বাচন করুন",
+    "eventTypes": "ট্র্যাক করার জন্য ঘটনার ধরন",
+    "preferredLanguage": "পছন্দের সতর্কতা ভাষা",
+    "turnOnAlerts": "সতর্কতা চালু করুন",
+    "turnOffAlerts": "সতর্কতা বন্ধ করুন",
+    "subscribing": "সাবস্ক্রাইব হচ্ছে...",
+    "notificationsNotSupported": "এই ব্রাউজারে পুশ নোটিফিকেশন সমর্থিত নয়",
+    "alertHistory": "সতর্কতা ইতিহাস",
+    "filters": "ফিল্টার",
+    "markAllRead": "সব পঠিত হিসাবে চিহ্নিত করুন",
+    "filterAlerts": "সতর্কতা ফিল্টার করুন",
+    "district": "জেলা",
+    "allDistricts": "সকল জেলা",
+    "severity": "তীব্রতা",
+    "all": "সব",
+    "eventType": "ঘটনার ধরন",
+    "allEventTypes": "সকল ঘটনার ধরন",
+    "severityLevels": {
+      "green": "সবুজ",
+      "yellow": "হলুদ",
+      "orange": "কমলা",
+      "red": "লাল"
+    },
+    "noAlertsFound": "আপনার ফিল্টারে কোনো সতর্কতা মেলেনি",
+    "read": "পঠিত",
+    "markAsRead": "পঠিত হিসাবে চিহ্নিত করুন"
   },
   "sos": {
     "title": "জরুরি এসওএস",
@@ -198,6 +227,7 @@
     "see_all": "সব দেখুন",
     "last_updated": "শেষ আপডেট",
     "live": "লাইভ",
-    "offline": "অফলাইন - ক্যাশ ডেটা দেখাচ্ছে"
+    "offline": "অফলাইন - ক্যাশ ডেটা দেখাচ্ছে",
+    "unavailable": "ডেটা পাওয়া যায়নি"
   }
 }

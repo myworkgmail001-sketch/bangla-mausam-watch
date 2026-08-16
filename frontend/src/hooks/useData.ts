@@ -1,18 +1,31 @@
-import { useState, useEffect, useCallback } from 'react';
-import { EONET_BASE, WB_BBOX } from '../utils/helpers';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { EonetEvent } from '../types';
+
+const API_BASE = (typeof window !== 'undefined' && (window as any).__API_BASE__) || '';
 
 export function useEonetEvents() {
   const [events, setEvents] = useState<EonetEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const cachedRef = useRef<EonetEvent[]>([]);
 
   const fetchEvents = useCallback(async () => {
     try {
-      const res = await fetch(`${EONET_BASE}/events/geojson?status=open&days=7&bbox=${WB_BBOX}`);
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
+      const proxyUrl = `${API_BASE}/api/eonet?path=/events/geojson?status=open&days=7&bbox=85.77,21.38,89.99,27.05`;
+      const fallbackUrl = `https://eonet.gsfc.nasa.gov/api/v3/events/geojson?status=open&days=7&bbox=85.77,21.38,89.99,27.05`;
+      
+      let data: any;
+      try {
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error('proxy failed');
+        data = await res.json();
+      } catch {
+        const res = await fetch(fallbackUrl);
+        if (!res.ok) throw new Error('EONET fetch failed');
+        data = await res.json();
+      }
+
       const parsed: EonetEvent[] = (data.features || []).map((f: any) => ({
         id: f.id || f.properties?.id || String(Math.random()),
         title: f.properties?.title || 'Unknown Event',
@@ -27,11 +40,18 @@ export function useEonetEvents() {
         magnitudeUnit: f.properties?.magnitudeUnit,
         date: f.properties?.date || new Date().toISOString(),
       }));
+      
+      cachedRef.current = parsed;
       setEvents(parsed);
       setLastUpdated(new Date());
       setError(null);
     } catch (e) {
-      setError('Failed to fetch EONET events');
+      if (cachedRef.current.length > 0) {
+        setEvents(cachedRef.current);
+        setError('live_data_paused');
+      } else {
+        setError('failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -51,16 +71,37 @@ export function useOpenMeteo(lat: number, lng: number) {
   const [hourly, setHourly] = useState<any[]>([]);
   const [daily, setDaily] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const cachedRef = useRef<any>(null);
+  const timeoutRef = useRef<any>(null);
 
   const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    timeoutRef.current = setTimeout(() => {
+      if (cachedRef.current) {
+        setCurrent(cachedRef.current.current);
+        setHourly(cachedRef.current.hourly);
+        setDaily(cachedRef.current.daily);
+        setError('timeout_showing_cached');
+      }
+      setLoading(false);
+    }, 10000);
+
     try {
-      setLoading(true);
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,pressure_msl,visibility&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset&timezone=Asia/Kolkata&forecast_days=7`;
-      const res = await fetch(url);
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,pressure_msl,visibility&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset&timezone=Asia%2FKolkata&forecast_days=7`;
+      
+      const controller = new AbortController();
+      const fetchTimeout = setTimeout(() => controller.abort(), 8000);
+      
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(fetchTimeout);
+      
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
 
-      setCurrent({
+      const newCurrent = {
         temperature: data.current?.temperature_2m ?? 0,
         feelsLike: data.current?.apparent_temperature ?? 0,
         humidity: data.current?.relative_humidity_2m ?? 0,
@@ -73,17 +114,17 @@ export function useOpenMeteo(lat: number, lng: number) {
         weatherCode: data.current?.weather_code ?? 0,
         sunrise: data.daily?.sunrise?.[0] ?? '',
         sunset: data.daily?.sunset?.[0] ?? '',
-      });
+      };
 
-      setHourly((data.hourly?.time || []).slice(0, 24).map((t: string, i: number) => ({
+      const newHourly = (data.hourly?.time || []).slice(0, 24).map((t: string, i: number) => ({
         time: t,
         temperature: data.hourly.temperature_2m[i],
         precipitationProbability: data.hourly.precipitation_probability[i],
         humidity: data.hourly.relative_humidity_2m[i],
         windSpeed: data.hourly.wind_speed_10m[i],
-      })));
+      }));
 
-      setDaily((data.daily?.time || []).map((t: string, i: number) => ({
+      const newDaily = (data.daily?.time || []).map((t: string, i: number) => ({
         date: t,
         tempMax: data.daily.temperature_2m_max[i],
         tempMin: data.daily.temperature_2m_min[i],
@@ -93,10 +134,25 @@ export function useOpenMeteo(lat: number, lng: number) {
         weatherCode: data.daily.weather_code[i],
         sunrise: data.daily.sunrise?.[i] ?? '',
         sunset: data.daily.sunset?.[i] ?? '',
-      })));
+      }));
+
+      cachedRef.current = { current: newCurrent, hourly: newHourly, daily: newDaily };
+      setCurrent(newCurrent);
+      setHourly(newHourly);
+      setDaily(newDaily);
+      setError(null);
     } catch (e) {
       console.error('Open-Meteo fetch failed:', e);
+      if (cachedRef.current) {
+        setCurrent(cachedRef.current.current);
+        setHourly(cachedRef.current.hourly);
+        setDaily(cachedRef.current.daily);
+        setError('showing_cached');
+      } else {
+        setError('failed');
+      }
     } finally {
+      clearTimeout(timeoutRef.current);
       setLoading(false);
     }
   }, [lat, lng]);
@@ -104,10 +160,13 @@ export function useOpenMeteo(lat: number, lng: number) {
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 30 * 60 * 1000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeoutRef.current);
+    };
   }, [fetchData]);
 
-  return { current, hourly, daily, loading, refetch: fetchData };
+  return { current, hourly, daily, loading, error, refetch: fetchData };
 }
 
 export function useGeolocation() {

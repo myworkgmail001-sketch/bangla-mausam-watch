@@ -128,7 +128,36 @@
     "notification_settings": "Notification Settings",
     "subscribed_district": "Subscribed District",
     "event_types": "Event Types",
-    "unsubscribe": "Unsubscribe"
+    "unsubscribe": "Unsubscribe",
+    "pushNotifications": "Push Notifications",
+    "pushDescription": "Get notified about disasters in your district",
+    "selectDistrict": "Select your district",
+    "chooseDistrict": "Choose a district",
+    "eventTypes": "Event types to track",
+    "preferredLanguage": "Preferred alert language",
+    "turnOnAlerts": "Turn On Alerts",
+    "turnOffAlerts": "Turn Off Alerts",
+    "subscribing": "Subscribing...",
+    "notificationsNotSupported": "Push notifications are not supported in this browser",
+    "alertHistory": "Alert History",
+    "filters": "Filters",
+    "markAllRead": "Mark all read",
+    "filterAlerts": "Filter alerts",
+    "district": "District",
+    "allDistricts": "All Districts",
+    "severity": "Severity",
+    "all": "All",
+    "eventType": "Event type",
+    "allEventTypes": "All event types",
+    "severityLevels": {
+      "green": "Green",
+      "yellow": "Yellow",
+      "orange": "Orange",
+      "red": "Red"
+    },
+    "noAlertsFound": "No alerts match your filters",
+    "read": "Read",
+    "markAsRead": "Mark as read"
   },
   "sos": {
     "title": "Emergency SOS",
@@ -198,6 +227,7 @@
     "see_all": "See All",
     "last_updated": "Last updated",
     "live": "LIVE",
-    "offline": "Offline - showing cached data"
+    "offline": "Offline - showing cached data",
+    "unavailable": "Data unavailable"
   }
 }
