@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    @apply bg-white text-body font-inter;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary-300 rounded-full;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl shadow-card border border-white/60;
+  }
+  
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300 hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+
+  .severity-badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+  
+  .severity-green { @apply bg-severity-green/10 text-severity-green; }
+  .severity-yellow { @apply bg-severity-yellow/10 text-severity-yellow; }
+  .severity-orange { @apply bg-severity-orange/10 text-severity-orange; }
+  .severity-red { @apply bg-severity-red/10 text-severity-red; }
+
+  .hero-gradient {
+    background: linear-gradient(135deg, #E0F2FE 0%, #F0F9FF 40%, #EEF2FF 100%);
+  }
+
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-nav border-t border-gray-100;
+  }
+
+  .btn-primary {
+    @apply bg-primary-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm
+           hover:bg-primary-600 active:bg-primary-700 transition-all duration-200
+           shadow-sm hover:shadow-md;
+  }
+
+  .btn-accent {
+    @apply bg-accent-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm
+           hover:bg-accent-600 active:bg-accent-700 transition-all duration-200
+           shadow-sm hover:shadow-md;
+  }
+
+  .warning-strip {
+    @apply flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .warning-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+
+  .leaflet-container {
+    z-index: 1;
+  }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
