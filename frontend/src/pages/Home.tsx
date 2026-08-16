@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Sun, Cloud, Droplets, Wind, Eye, Thermometer, MapPin, ChevronRight, Bell, CloudRain, Sunset, Sunrise, AlertTriangle, RefreshCw, Navigation, Loader2 } from 'lucide-react';
+import { Sun, Cloud, Droplets, Wind, Eye, Thermometer, MapPin, ChevronRight, Bell, CloudRain, Sunset, Sunrise, AlertTriangle, RefreshCw, Navigation, Loader2, ShieldCheck } from 'lucide-react';
 import { useEonetEvents, useOpenMeteo } from '../hooks/useData';
 import { findNearestDistrict } from '../data/districts';
 import { getWeatherCodeInfo, formatRelativeTime } from '../utils/helpers';
@@ -13,6 +13,7 @@ import DistrictGrid from '../components/DistrictGrid';
 interface SavedLocation {
   lat: number;
   lng: number;
+  villageName: string;
   districtName: string;
   districtNameBn: string;
   timestamp: number;
@@ -27,7 +28,7 @@ function loadSavedLocation(): SavedLocation | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed.lat && parsed.lng && parsed.districtName && parsed.timestamp) return parsed;
+    if (parsed.lat && parsed.lng && parsed.timestamp) return parsed;
   } catch {}
   return null;
 }
@@ -36,16 +37,39 @@ function saveLocationToStorage(loc: SavedLocation) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(loc)); } catch {}
 }
 
-function reverseGeocode(lat: number, lng: number): Promise<boolean> {
-  return fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=bn&zoom=10`, {
-    headers: { 'User-Agent': 'BanglaMausamWatch/1.0' },
-  })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(data => {
-      const state = (data.address || {}).state || '';
-      return state.includes('পশ্চিমবঙ্গ') || state.toLowerCase().includes('west bengal');
-    })
-    .catch(() => false);
+function extractVillageName(address: any): string {
+  return address.hamlet || address.village || address.suburb || address.town || address.city_quarter || address.neighbourhood || address.city || '';
+}
+
+function formatCoords(lat: number, lng: number): string {
+  const latDir = lat >= 0 ? 'N' : 'S';
+  const lngDir = lng >= 0 ? 'E' : 'W';
+  return `${Math.abs(lat).toFixed(2)}°${latDir}, ${Math.abs(lng).toFixed(2)}°${lngDir}`;
+}
+
+interface ReverseGeocodeResult {
+  isWB: boolean;
+  villageName: string;
+  displayName: string;
+}
+
+async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocodeResult> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=bn&zoom=18`,
+      { headers: { 'User-Agent': 'BanglaMausamWatch/1.0' } }
+    );
+    if (!res.ok) throw new Error('Reverse geocode failed');
+    const data = await res.json();
+    const addr = data.address || {};
+    const state = addr.state || '';
+    const isWB = state.includes('পশ্চিমবঙ্গ') || state.toLowerCase().includes('west bengal');
+    const villageName = extractVillageName(addr);
+    const displayName = data.display_name || '';
+    return { isWB, villageName, displayName };
+  } catch {
+    return { isWB: false, villageName: '', displayName: '' };
+  }
 }
 
 function ipGeolocate(): Promise<{ lat: number; lng: number } | null> {
@@ -60,6 +84,7 @@ export default function Home() {
   const navigate = useNavigate();
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [userVillageName, setUserVillageName] = useState('');
   const [userDistrict, setUserDistrict] = useState('');
   const [userDistrictBn, setUserDistrictBn] = useState('');
   const [locationLoading, setLocationLoading] = useState(false);
@@ -71,6 +96,7 @@ export default function Home() {
     const saved = loadSavedLocation();
     if (saved) {
       setUserLocation({ lat: saved.lat, lng: saved.lng });
+      setUserVillageName(saved.villageName || '');
       setUserDistrict(saved.districtName);
       setUserDistrictBn(saved.districtNameBn);
       hasSaved.current = true;
@@ -87,6 +113,11 @@ export default function Home() {
   const displayDistrict = i18n.language === 'bn'
     ? (userDistrictBn || nearestDistrict.namebn)
     : (userDistrict || nearestDistrict.name);
+
+  const hasPreciseLocation = !!userLocation && !!userVillageName;
+  const heroLocationLine = hasPreciseLocation
+    ? userVillageName
+    : displayDistrict;
   const weatherInfo = current ? getWeatherCodeInfo(current.weatherCode) : null;
 
   const hour = new Date().getHours();
@@ -109,13 +140,32 @@ export default function Home() {
   const recentUpdated = lastUpdated ? formatRelativeTime(lastUpdated.toISOString()) : '';
 
   const applyLocation = async (lat: number, lng: number) => {
-    const isWB = await reverseGeocode(lat, lng);
-    const nearest = findNearestDistrict(lat, lng);
+    const [geoResult, nearest] = await Promise.all([
+      reverseGeocode(lat, lng),
+      Promise.resolve(findNearestDistrict(lat, lng)),
+    ]);
+
+    let villageLabel = geoResult.villageName;
+    if (!villageLabel && geoResult.displayName) {
+      const parts = geoResult.displayName.split(',');
+      villageLabel = parts[0]?.trim() || '';
+    }
+    if (!villageLabel) {
+      villageLabel = `${t('home.your_location')} · ${formatCoords(lat, lng)}`;
+    }
+
     setUserLocation({ lat, lng });
+    setUserVillageName(villageLabel);
     setUserDistrict(nearest.name);
     setUserDistrictBn(nearest.namebn);
-    setOutsideWB(!isWB);
-    saveLocationToStorage({ lat, lng, districtName: nearest.name, districtNameBn: nearest.namebn, timestamp: Date.now() });
+    setOutsideWB(!geoResult.isWB);
+    saveLocationToStorage({
+      lat, lng,
+      villageName: villageLabel,
+      districtName: nearest.name,
+      districtNameBn: nearest.namebn,
+      timestamp: Date.now(),
+    });
   };
 
   const handleMyLocation = () => {
@@ -124,7 +174,7 @@ export default function Home() {
 
     if (!navigator.geolocation) {
       ipGeolocate().then(coords => {
-        if (coords) return applyLocation(coords.lat, coords.lng);
+        if (coords) return applyLocation(coords.lat, coords.lng).then(() => setLocationLoading(false));
         setLocationStatus('failed');
         setLocationLoading(false);
       });
@@ -136,11 +186,14 @@ export default function Home() {
         try {
           await applyLocation(pos.coords.latitude, pos.coords.longitude);
         } catch {
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          const n = findNearestDistrict(pos.coords.latitude, pos.coords.longitude);
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setUserLocation({ lat, lng });
+          setUserVillageName(formatCoords(lat, lng));
+          const n = findNearestDistrict(lat, lng);
           setUserDistrict(n.name);
           setUserDistrictBn(n.namebn);
-          saveLocationToStorage({ lat: pos.coords.latitude, lng: pos.coords.longitude, districtName: n.name, districtNameBn: n.namebn, timestamp: Date.now() });
+          saveLocationToStorage({ lat, lng, villageName: formatCoords(lat, lng), districtName: n.name, districtNameBn: n.namebn, timestamp: Date.now() });
         }
         setLocationLoading(false);
       },
@@ -154,7 +207,7 @@ export default function Home() {
           setLocationLoading(false);
         }
       },
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
     );
   };
 
@@ -162,9 +215,18 @@ export default function Home() {
     <div className="space-y-4 pb-4">
       {/* Hero Section */}
       <section className="hero-gradient px-4 pt-5 pb-6">
-        <div className="flex items-center gap-1.5 text-xs text-primary-600 font-medium mb-2">
-          <MapPin className="w-3.5 h-3.5" />
-          <span>{displayDistrict}</span>
+        {/* Location Header */}
+        <div className="mb-2">
+          <div className="flex items-center gap-1.5 text-primary-600 font-medium">
+            <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="text-base font-semibold text-heading leading-tight">{heroLocationLine}</span>
+          </div>
+          {hasPreciseLocation && (
+            <p className="text-xs text-body/60 mt-0.5 ml-5">{displayDistrict}</p>
+          )}
+          {userLocation && (
+            <p className="text-[10px] text-body/40 mt-0.5 ml-5 font-mono">{formatCoords(effectiveLat, effectiveLng)}</p>
+          )}
         </div>
 
         {outsideWB && userLocation && (
@@ -208,28 +270,34 @@ export default function Home() {
           </div>
         </div>
 
-        {/* My Location Button */}
-        <div className="mt-4 flex items-center gap-2">
-          <button
-            onClick={handleMyLocation}
-            disabled={locationLoading}
-            className="flex-1 flex items-center justify-center gap-2 bg-white/80 border border-primary-200 text-primary-600 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-primary-50 active:scale-[0.98] disabled:opacity-50"
-          >
-            {locationLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Navigation className="w-4 h-4" />
-            )}
-            <span>{locationLoading ? 'লোকেশন নির্ণয় করছে...' : `📍 ${t('home.my_location')}`}</span>
-          </button>
-          {hasSaved.current && !locationLoading && (
+        {/* My Location Button + Privacy */}
+        <div className="mt-4">
+          <div className="flex items-center gap-2">
             <button
               onClick={handleMyLocation}
-              className="px-3 py-2.5 rounded-xl bg-primary-50 text-primary-500 text-xs font-medium hover:bg-primary-100 transition-colors"
+              disabled={locationLoading}
+              className="flex-1 flex items-center justify-center gap-2 bg-white/80 border border-primary-200 text-primary-600 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-primary-50 active:scale-[0.98] disabled:opacity-50"
             >
-              {t('home.update_location')}
+              {locationLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Navigation className="w-4 h-4" />
+              )}
+              <span>{locationLoading ? 'লোকেশন নির্ণয় করছে...' : `📍 ${t('home.my_location')}`}</span>
             </button>
-          )}
+            {hasSaved.current && !locationLoading && (
+              <button
+                onClick={handleMyLocation}
+                className="px-3 py-2.5 rounded-xl bg-primary-50 text-primary-500 text-xs font-medium hover:bg-primary-100 transition-colors"
+              >
+                {t('home.update_location')}
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1 mt-1.5 ml-1">
+            <ShieldCheck className="w-3 h-3 text-body/40" />
+            <p className="text-[10px] text-body/40">{t('home.location_privacy')}</p>
+          </div>
         </div>
 
         {/* Quick Stats */}

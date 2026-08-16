@@ -117,9 +117,14 @@ export default function MapPage() {
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
+    const center: [number, number] = userLocation
+      ? [userLocation.lat, userLocation.lng]
+      : [23.5, 87.5];
+    const zoom = userLocation ? 10 : 6;
+
     const map = L.map(mapRef.current, {
-      center: [23.5, 87.5],
-      zoom: 6,
+      center,
+      zoom,
       zoomControl: false,
       maxBounds: [[18, 82], [30, 94]],
     });
@@ -135,6 +140,19 @@ export default function MapPage() {
       [[WB_BBOX_OBJ.minLat, WB_BBOX_OBJ.minLng], [WB_BBOX_OBJ.maxLat, WB_BBOX_OBJ.maxLng]],
       { color: '#0EA5E9', weight: 1, fillOpacity: 0.03, dashArray: '5,5' }
     ).addTo(map);
+
+    if (userLocation) {
+      const userIcon = L.divIcon({
+        className: '',
+        html: `<div style="width:16px;height:16px;border-radius:50%;background:#0EA5E9;border:3px solid white;box-shadow:0 0 0 2px #0EA5E9, 0 2px 6px rgba(0,0,0,0.3);"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+      const userMarker = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(map);
+      userMarker.bindPopup(`<div style="font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#0EA5E9;">আপনি এখানে আছেন</div>`, { closeButton: false });
+      userMarker.openPopup();
+      setTimeout(() => userMarker.closePopup(), 3000);
+    }
 
     mapInstance.current = map;
 

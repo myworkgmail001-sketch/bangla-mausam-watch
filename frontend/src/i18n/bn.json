@@ -58,7 +58,10 @@
     "rain_chance_title": "পরবর্তী ১২ ঘণ্টায় বৃষ্টি হবে?",
     "rain_chance_high": "% সম্ভাবনা — ছাতা রাখুন",
     "rain_chance_low": "% সম্ভাবনা — পরিষ্কার আকাশ",
-    "greeting_night": "শুভ রাত্রি"
+    "greeting_night": "শুভ রাত্রি",
+    "location_privacy": "লোকেশন শুধু আপনার ডিভাইসে সংরক্ষিত থাকে",
+    "your_location": "আপনার অবস্থান",
+    "you_are_here": "আপনি এখানে আছেন"
   },
   "severity": {
     "safe": "নিরাপদ",

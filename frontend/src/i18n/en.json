@@ -58,7 +58,10 @@
     "rain_chance_title": "Will it rain in the next 12 hours?",
     "rain_chance_high": "% chance — carry an umbrella",
     "rain_chance_low": "% chance — clear skies ahead",
-    "greeting_night": "Good Night"
+    "greeting_night": "Good Night",
+    "location_privacy": "Location stays on your device only",
+    "your_location": "Your Location",
+    "you_are_here": "You are here"
   },
   "severity": {
     "safe": "Safe",
