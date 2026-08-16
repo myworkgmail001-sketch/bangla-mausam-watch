@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Sun, Cloud, Droplets, Wind, Eye, Thermometer, MapPin, ChevronRight, Bell, CloudRain, Sunset, Sunrise, AlertTriangle, RefreshCw, Navigation } from 'lucide-react';
-import { useEonetEvents, useOpenMeteo, useGeolocation } from '../hooks/useData';
+import { Sun, Cloud, Droplets, Wind, Eye, Thermometer, MapPin, ChevronRight, Bell, CloudRain, Sunset, Sunrise, AlertTriangle, RefreshCw, Navigation, Loader2 } from 'lucide-react';
+import { useEonetEvents, useOpenMeteo } from '../hooks/useData';
 import { districts, findNearestDistrict } from '../data/districts';
-import { getWeatherCodeInfo, getCategoryIcon, getSeverityColor, formatRelativeTime } from '../utils/helpers';
+import { getWeatherCodeInfo, formatRelativeTime } from '../utils/helpers';
 import WeatherChart from '../components/WeatherChart';
 import LiveMapMini from '../components/LiveMapMini';
 import WarningStrip from '../components/WarningStrip';
@@ -27,31 +27,58 @@ function loadSavedLocation(): SavedLocation | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed.lat && parsed.lng && parsed.districtName && parsed.timestamp) {
-      return parsed;
-    }
+    if (parsed.lat && parsed.lng && parsed.districtName && parsed.timestamp) return parsed;
   } catch {}
   return null;
 }
 
 function saveLocationToStorage(loc: SavedLocation) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(loc));
-  } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(loc)); } catch {}
+}
+
+function reverseGeocode(lat: number, lng: number): Promise<{ isWB: boolean; district: string }> {
+  return fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=bn&zoom=10`, {
+    headers: { 'User-Agent': 'BanglaMausamWatch/1.0' },
+  })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+      const addr = data.address || {};
+      const isWB = (addr.state || '').includes('পশ্চিমবঙ্গ') || (addr.state || '').toLowerCase().includes('west bengal');
+      const district = addr.district || addr.county || addr.state_district || '';
+      return { isWB, district };
+    })
+    .catch(() => ({ isWB: false, district: '' }));
+}
+
+function ipGeolocate(): Promise<{ lat: number; lng: number } | null> {
+  return fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(d => d.latitude && d.longitude ? { lat: d.latitude, lng: d.longitude } : null)
+    .catch(() => null);
+}
+
+function matchDistrict(name: string): { en: string; bn: string } | null {
+  if (!name) return null;
+  const low = name.toLowerCase();
+  for (const d of districts) {
+    if (d.namebn.includes(name) || name.includes(d.namebn) || d.name.toLowerCase().includes(low) || low.includes(d.name.toLowerCase())) {
+      return { en: d.name, bn: d.namebn };
+    }
+  }
+  return null;
 }
 
 export default function Home() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { location: autoLocation } = useGeolocation();
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [userDistrict, setUserDistrict] = useState<string>('');
-  const [userDistrictBn, setUserDistrictBn] = useState<string>('');
+  const [userDistrict, setUserDistrict] = useState('');
+  const [userDistrictBn, setUserDistrictBn] = useState('');
   const [locationLoading, setLocationLoading] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'denied' | 'failed'>('idle');
   const [outsideWB, setOutsideWB] = useState(false);
-  const [showUpdateBtn, setShowUpdateBtn] = useState(false);
+  const hasSaved = useRef(false);
 
   useEffect(() => {
     const saved = loadSavedLocation();
@@ -59,35 +86,28 @@ export default function Home() {
       setUserLocation({ lat: saved.lat, lng: saved.lng });
       setUserDistrict(saved.districtName);
       setUserDistrictBn(saved.districtNameBn);
-      setShowUpdateBtn(true);
+      hasSaved.current = true;
     }
   }, []);
 
-  const effectiveLat = userLocation?.lat || autoLocation?.lat || DEFAULT_LAT;
-  const effectiveLng = userLocation?.lng || autoLocation?.lng || DEFAULT_LNG;
+  const effectiveLat = userLocation?.lat || DEFAULT_LAT;
+  const effectiveLng = userLocation?.lng || DEFAULT_LNG;
 
   const { current, hourly, daily, loading: weatherLoading, error: weatherError, refetch: refetchWeather } = useOpenMeteo(effectiveLat, effectiveLng);
   const { events, loading: eventsLoading, error: eventsError, lastUpdated, refetch: refetchEvents } = useEonetEvents();
 
   const nearestDistrict = findNearestDistrict(effectiveLat, effectiveLng);
-  const displayDistrict = i18n.language === 'bn' ? (userDistrictBn || nearestDistrict.namebn) : (userDistrict || nearestDistrict.name);
+  const displayDistrict = i18n.language === 'bn'
+    ? (userDistrictBn || nearestDistrict.namebn)
+    : (userDistrict || nearestDistrict.name);
   const weatherInfo = current ? getWeatherCodeInfo(current.weatherCode) : null;
 
   const hour = new Date().getHours();
-  const getGreeting = () => {
-    if (hour >= 5 && hour < 12) return t('home.greeting');
-    if (hour >= 12 && hour < 17) return t('home.greeting_afternoon');
-    if (hour >= 17 && hour < 21) return t('home.greeting_evening');
-    return t('home.greeting_night');
-  };
-  const greeting = getGreeting();
+  const greeting = hour < 12 ? t('home.greeting') : hour < 17 ? t('home.greeting_afternoon') : hour < 21 ? t('home.greeting_evening') : t('home.greeting_night');
 
   const getSummaryText = () => {
     if (!current) return 'আজ স্বাভাবিক আবহাওয়া থাকবে।';
-    const morningRain = hourly.filter(h => {
-      const hr = new Date(h.time).getHours();
-      return hr >= 6 && hr <= 12;
-    }).some(h => (h.precipitationProbability || 0) > 60);
+    const morningRain = hourly.filter(h => { const hr = new Date(h.time).getHours(); return hr >= 6 && hr <= 12; }).some(h => (h.precipitationProbability || 0) > 60);
     if (morningRain) return 'সকালে ভারী বৃষ্টি, বিকেলে খুলবে — ছাতা নিন।';
     if (hourly.some(h => (h.precipitationProbability || 0) > 40)) return 'মাঝারি বৃষ্টির সম্ভাবনা — ছাতা রাখুন।';
     if ((current.temperature || 0) > 38) return 'তাপপ্রবাহ — বাইরে যাওয়া এড়িয়ে চলুন।';
@@ -101,92 +121,58 @@ export default function Home() {
   const activeEvents = events.filter(e => !e.closed);
   const recentUpdated = lastUpdated ? formatRelativeTime(lastUpdated.toISOString()) : '';
 
-  const handleEnableAlerts = () => {
-    navigate('/alerts');
+  const applyLocation = async (lat: number, lng: number) => {
+    const { isWB, district } = await reverseGeocode(lat, lng);
+    const nearest = findNearestDistrict(lat, lng);
+    const matched = matchDistrict(district);
+    const dName = matched?.en || district || nearest.name;
+    const dBn = matched?.bn || nearest.namebn;
+    setUserLocation({ lat, lng });
+    setUserDistrict(dName);
+    setUserDistrictBn(dBn);
+    setOutsideWB(!isWB);
+    saveLocationToStorage({ lat, lng, districtName: dName, districtNameBn: dBn, timestamp: Date.now() });
   };
 
-  const reverseGeocode = async (lat: number, lng: number) => {
-    try {
-      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=bn`;
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'BanglaMausamWatch/1.0' },
-      });
-      if (!res.ok) throw new Error('Reverse geocode failed');
-      const data = await res.json();
-      const addr = data.address || {};
-      const isWB = (addr.state || '').includes('পশ্চিমবঙ্গ') || (addr.state || '').toLowerCase().includes('west bengal');
-      const district = addr.district || addr.county || addr.state_district || '';
-      return { isWB, district };
-    } catch {
-      return { isWB: false, district: '' };
-    }
-  };
+  const handleMyLocation = () => {
+    setLocationLoading(true);
+    setLocationStatus('idle');
 
-  const handleMyLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationError('Geolocation not supported');
+      ipGeolocate().then(coords => {
+        if (coords) return applyLocation(coords.lat, coords.lng);
+        setLocationStatus('failed');
+        setLocationLoading(false);
+      });
       return;
     }
 
-    setLocationLoading(true);
-    setLocationError(null);
-
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-
         try {
-          const { isWB, district } = await reverseGeocode(lat, lng);
-          const nearest = findNearestDistrict(lat, lng);
-
-          let districtName = district || nearest.name;
-          let districtNameBn = nearest.namebn;
-
-          if (isWB && district) {
-            const matchedDistrict = districts.find(
-              d => d.namebn.includes(district) || district.includes(d.namebn) || d.name.toLowerCase().includes(district.toLowerCase())
-            );
-            if (matchedDistrict) {
-              districtName = matchedDistrict.name;
-              districtNameBn = matchedDistrict.namebn;
-            }
-          }
-
-          setUserLocation({ lat, lng });
-          setUserDistrict(districtName);
-          setUserDistrictBn(districtNameBn);
-          setOutsideWB(!isWB);
-          setShowUpdateBtn(true);
-
-          saveLocationToStorage({
-            lat,
-            lng,
-            districtName,
-            districtNameBn,
-            timestamp: Date.now(),
-          });
+          await applyLocation(pos.coords.latitude, pos.coords.longitude);
         } catch {
-          setUserLocation({ lat, lng });
-          const nearest = findNearestDistrict(lat, lng);
-          setUserDistrict(nearest.name);
-          setUserDistrictBn(nearest.namebn);
-          setShowUpdateBtn(true);
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          const n = findNearestDistrict(pos.coords.latitude, pos.coords.longitude);
+          setUserDistrict(n.name);
+          setUserDistrictBn(n.namebn);
+          saveLocationToStorage({ lat: pos.coords.latitude, lng: pos.coords.longitude, districtName: n.name, districtNameBn: n.namebn, timestamp: Date.now() });
         }
-
         setLocationLoading(false);
       },
-      (err) => {
-        setLocationLoading(false);
-        if (err.code === 1) {
-          setLocationError(t('home.location_denied'));
+      async () => {
+        const coords = await ipGeolocate();
+        if (coords) {
+          await applyLocation(coords.lat, coords.lng);
+          setLocationLoading(false);
         } else {
-          setLocationError(t('common.error'));
+          setLocationStatus('denied');
+          setLocationLoading(false);
         }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
     );
-  }, [t]);
+  };
 
   return (
     <div className="space-y-4 pb-4">
@@ -201,8 +187,8 @@ export default function Home() {
           <p className="text-xs text-orange-500 font-medium mb-1">{t('home.outside_wb')}</p>
         )}
 
-        {locationError && (
-          <p className="text-xs text-red-400 mb-1">{locationError}</p>
+        {locationStatus === 'denied' && (
+          <p className="text-xs text-orange-500 mb-1">{t('home.location_denied')} — {t('home.use_district_selector')}</p>
         )}
 
         <p className="text-xs text-body/70 mb-3">{greeting}</p>
@@ -241,18 +227,18 @@ export default function Home() {
         {/* My Location Button */}
         <div className="mt-4 flex items-center gap-2">
           <button
-            onClick={showUpdateBtn ? handleMyLocation : handleMyLocation}
+            onClick={handleMyLocation}
             disabled={locationLoading}
             className="flex-1 flex items-center justify-center gap-2 bg-white/80 border border-primary-200 text-primary-600 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-primary-50 active:scale-[0.98] disabled:opacity-50"
           >
             {locationLoading ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Navigation className="w-4 h-4" />
             )}
-            <span>📍 {t('home.my_location')}</span>
+            <span>{locationLoading ? 'লোকেশন নির্ণয় করছে...' : `📍 ${t('home.my_location')}`}</span>
           </button>
-          {showUpdateBtn && !locationLoading && (
+          {hasSaved.current && !locationLoading && (
             <button
               onClick={handleMyLocation}
               className="px-3 py-2.5 rounded-xl bg-primary-50 text-primary-500 text-xs font-medium hover:bg-primary-100 transition-colors"
@@ -280,7 +266,7 @@ export default function Home() {
 
         {/* Enable Alerts CTA */}
         <button
-          onClick={handleEnableAlerts}
+          onClick={() => navigate('/alerts')}
           className="w-full mt-4 flex items-center justify-center gap-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white py-3 rounded-2xl font-semibold text-sm shadow-lg shadow-primary-500/20 hover:shadow-xl transition-all"
         >
           <Bell className="w-4 h-4" />
@@ -361,8 +347,7 @@ export default function Home() {
               {hourly.slice(0, 12).map((h, i) => {
                 const prob = h.precipitationProbability || 0;
                 const isHigh = prob > 60;
-                const time = new Date(h.time);
-                const hourLabel = time.getHours();
+                const hourLabel = new Date(h.time).getHours();
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
                     <span className={`text-[8px] font-medium ${isHigh ? 'text-orange-500' : 'text-body/50'}`}>{prob}%</span>
@@ -374,11 +359,8 @@ export default function Home() {
             </div>
             <p className="text-xs text-body/70">
               {(() => {
-                const next12 = hourly.slice(0, 12);
-                const maxProb = Math.max(...next12.map(h => h.precipitationProbability || 0));
-                return maxProb > 60
-                  ? `${maxProb}%${t('home.rain_chance_high')}`
-                  : `${maxProb}%${t('home.rain_chance_low')}`;
+                const maxProb = Math.max(...hourly.slice(0, 12).map(h => h.precipitationProbability || 0));
+                return maxProb > 60 ? `${maxProb}%${t('home.rain_chance_high')}` : `${maxProb}%${t('home.rain_chance_low')}`;
               })()}
             </p>
           </div>
@@ -394,7 +376,7 @@ export default function Home() {
               {daily.map((day, i) => {
                 const info = getWeatherCodeInfo(day.weatherCode);
                 const date = new Date(day.date);
-                const dayName = i === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayName = i === 0 ? (i18n.language === 'bn' ? 'আজ' : 'Today') : date.toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'short' });
                 return (
                   <div key={day.date} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0 animate-slide-up" style={{ animationDelay: `${i * 50}ms` }}>
                     <span className="text-xs font-medium text-heading w-12">{dayName}</span>
@@ -403,13 +385,7 @@ export default function Home() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-heading">{Math.round(day.tempMax)}°</span>
                         <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${((day.tempMax - day.tempMin) / 15) * 100}%`,
-                              background: `linear-gradient(90deg, #38BDF8, #EF4444)`,
-                            }}
-                          />
+                          <div className="h-full rounded-full" style={{ width: `${((day.tempMax - day.tempMin) / 15) * 100}%`, background: 'linear-gradient(90deg, #38BDF8, #EF4444)' }} />
                         </div>
                         <span className="text-xs text-body/60">{Math.round(day.tempMin)}°</span>
                       </div>
@@ -431,9 +407,7 @@ export default function Home() {
         <div className="glass-card overflow-hidden">
           <div className="p-4 pb-2 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-heading">{t('home.live_map')}</h3>
-            <button onClick={() => navigate('/map')} className="text-xs text-primary-500 font-medium">
-              {t('home.view_all')}
-            </button>
+            <button onClick={() => navigate('/map')} className="text-xs text-primary-500 font-medium">{t('home.view_all')}</button>
           </div>
           <LiveMapMini events={events} />
         </div>
@@ -443,9 +417,7 @@ export default function Home() {
       <section className="px-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-heading">{t('home.districts_of_wb')}</h3>
-          <button onClick={() => navigate('/districts')} className="text-xs text-primary-500 font-medium">
-            {t('home.view_all')}
-          </button>
+          <button onClick={() => navigate('/districts')} className="text-xs text-primary-500 font-medium">{t('home.view_all')}</button>
         </div>
         <DistrictGrid compact />
       </section>
