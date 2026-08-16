@@ -1,19 +1,32 @@
 import { AlertTriangle, CloudRain, Thermometer, Wind, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { getSeverityColor } from '../utils/helpers';
 
 const mockWarnings = [
-  { severity: 'Orange', title: 'Heavy Rainfall Warning', titlebn: 'ভারী বৃষ্টিপাত সতর্কতা', district: 'Kolkata', icon: CloudRain },
-  { severity: 'Yellow', title: 'Thunderstorm Alert', titlebn: 'বজ্রঝড় সতর্কতা', district: 'North 24 Parganas', icon: Zap },
-  { severity: 'Green', title: 'Normal Weather', titlebn: 'স্বাভাবিক আবহাওয়া', district: 'Darjeeling', icon: Wind },
-  { severity: 'Yellow', title: 'Heat Wave Watch', titlebn: 'তাপ প্রবাহ সতর্কতা', district: 'Bankura', icon: Thermometer },
+  { severity: 'Orange', title: 'Heavy Rainfall Warning', titlebn: 'ভারী বৃষ্টিপাতের সতরকতা', district: 'Kolkata', districtbn: 'কোলকাতা', icon: CloudRain },
+  { severity: 'Yellow', title: 'Thunderstorm Alert', titlebn: 'বজ্রঝড়ের সতরকতা', district: 'North 24 Parganas', districtbn: 'উত্তর ২৪ পরগনা', icon: Zap },
+  { severity: 'Green', title: 'Normal Weather', titlebn: 'স্বাভাবিক আবহাওয়া', district: 'Darjeeling', districtbn: 'দার্জিলিং', icon: Wind },
+  { severity: 'Yellow', title: 'Heat Wave Watch', titlebn: 'তাপপ্রবাহের সতরকতা', district: 'Bankura', districtbn: 'বাঁকুড়া', icon: Thermometer },
 ];
 
+function formatTime() {
+  const now = new Date();
+  let hours = now.getHours();
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${hours}:${minutes} ${ampm}`;
+}
+
 export default function WarningStrip() {
+  const { t, i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
+
   return (
     <section className="px-4">
       <div className="flex items-center gap-2 mb-2">
         <AlertTriangle className="w-4 h-4 text-severity-orange" />
-        <h3 className="text-sm font-semibold text-heading">IMD Warnings</h3>
+        <h3 className="text-sm font-semibold text-heading">{t('home.imd_warnings')}</h3>
       </div>
       <div className="warning-strip">
         {mockWarnings.map((w, i) => (
@@ -29,11 +42,18 @@ export default function WarningStrip() {
                 {w.severity}
               </span>
             </div>
-            <p className="text-xs font-semibold text-heading leading-tight mb-0.5">{w.title}</p>
-            <p className="text-[10px] text-body/60">{w.district}</p>
+            <p className="text-xs font-semibold text-heading leading-tight mb-0.5">
+              {isBn ? w.titlebn : w.title}
+            </p>
+            <p className="text-[10px] text-body/60">
+              {isBn ? w.districtbn : w.district}
+            </p>
           </div>
         ))}
       </div>
+      <p className="text-[10px] text-body/50 mt-1.5">
+        {t('home.data_updated')}: {formatTime()}
+      </p>
     </section>
   );
 }

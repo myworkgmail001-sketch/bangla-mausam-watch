@@ -1,10 +1,11 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useOpenMeteo, useEonetEvents } from '../hooks/useData';
-import { getDistrictBySlug } from '../data/districts';
+import { getDistrictBySlug, haversineDistance } from '../data/districts';
 import { getWeatherCodeInfo, getCategoryIcon, getCategoryColor, formatRelativeTime, shareToWhatsApp } from '../utils/helpers';
 import WeatherChart from '../components/WeatherChart';
-import { ArrowLeft, MapPin, Droplets, Wind, Thermometer, Share2, ExternalLink, Users, Ruler, Building, Cloud, CloudRain } from 'lucide-react';
+import ShareCard from '../components/ShareCard';
+import { ArrowLeft, MapPin, Droplets, Wind, Thermometer, Share2, ExternalLink, Users, Ruler, Building, Cloud, CloudRain, Bell, AlertTriangle, MapPinned } from 'lucide-react';
 
 export default function DistrictDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -25,9 +26,54 @@ export default function DistrictDetail() {
   }
 
   const weatherInfo = current ? getWeatherCodeInfo(current.weatherCode) : null;
-  const districtEvents = events.filter(e => !e.closed).slice(0, 5);
+
+  const districtEvents = events
+    .filter(e => !e.closed)
+    .map(event => ({
+      ...event,
+      distance: event.lat && event.lng
+        ? haversineDistance(district.lat, district.lng, event.lat, event.lng)
+        : Infinity
+    }))
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 5);
+
+  const temperature = current?.temperature || 0;
+  const windSpeed = current?.windSpeed || 0;
+
+  let warningStatus: { label: string; color: string; bg: string };
+  if (temperature > 38) {
+    warningStatus = {
+      label: 'তাপপ্রবাহ সতর্কতা',
+      color: '#EF4444',
+      bg: '#FEF2F2'
+    };
+  } else if (windSpeed > 40) {
+    warningStatus = {
+      label: 'বাতাস সতর্কতা',
+      color: '#F97316',
+      bg: '#FFF7ED'
+    };
+  } else {
+    warningStatus = {
+      label: 'স্বাভাবিক',
+      color: '#22C55E',
+      bg: '#F0FDF4'
+    };
+  }
 
   const sev = { color: '#22C55E', label: t('severity.safe') };
+
+  const getDayName = (dateStr: string, index: number) => {
+    if (index === 0) return i18n.language === 'bn' ? 'আজ' : 'Today';
+    return new Date(dateStr).toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'short' });
+  };
+
+  const mockCamps = [
+    { name: i18n.language === 'bn' ? 'সরকারি উচ্চ বিদ্যালয় শিবির' : 'Govt. High School Camp', distance: 2.3, capacity: 500 },
+    { name: i18n.language === 'bn' ? 'কমিউনিটি হল শিবির' : 'Community Hall Camp', distance: 4.7, capacity: 350 },
+    { name: i18n.language === 'bn' ? 'স্টেডিয়াম শিবির' : 'Stadium Camp', distance: 6.1, capacity: 800 },
+  ];
 
   return (
     <div className="pb-4">
@@ -64,6 +110,18 @@ export default function DistrictDetail() {
       </div>
 
       <div className="px-4 space-y-4 -mt-2">
+        {/* Warning Status */}
+        <div className="glass-card p-4">
+          <h3 className="text-sm font-semibold text-heading mb-2">{t('districts.warning_status')}</h3>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full"
+                  style={{ backgroundColor: warningStatus.bg, color: warningStatus.color }}>
+              <AlertTriangle className="w-3.5 h-3.5" />
+              {warningStatus.label}
+            </span>
+          </div>
+        </div>
+
         {/* Info Cards */}
         <div className="grid grid-cols-3 gap-2">
           {[
@@ -114,6 +172,15 @@ export default function DistrictDetail() {
           </div>
         </div>
 
+        {/* Subscribe Button */}
+        <Link
+          to="/alerts"
+          className="w-full flex items-center justify-center gap-2 bg-primary-500 text-white py-3 rounded-2xl font-semibold text-sm shadow-md hover:bg-primary-600 transition-colors"
+        >
+          <Bell className="w-4 h-4" />
+          {t('districts.subscribe_district')}
+        </Link>
+
         {/* River Levels */}
         <div className="glass-card p-4">
           <h3 className="text-sm font-semibold text-heading mb-3">{t('districts.river_levels')}</h3>
@@ -128,6 +195,25 @@ export default function DistrictDetail() {
           {district.rivers.length === 0 && (
             <p className="text-xs text-body/40">{t('districts.no_rivers')}</p>
           )}
+        </div>
+
+        {/* Relief Camps */}
+        <div className="glass-card p-4">
+          <h3 className="text-sm font-semibold text-heading mb-3">{t('districts.relief_camps')}</h3>
+          <div className="space-y-2">
+            {mockCamps.map((camp, i) => (
+              <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                  <Building className="w-4 h-4 text-primary-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-heading truncate">{camp.name}</p>
+                  <p className="text-[10px] text-body/50">{camp.distance} km · {camp.capacity} {i18n.language === 'bn' ? 'জন ধারণক্ষমতা' : 'capacity'}</p>
+                </div>
+                <MapPinned className="w-3.5 h-3.5 text-primary-400 flex-shrink-0" />
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* 24h Chart */}
@@ -145,7 +231,7 @@ export default function DistrictDetail() {
             <div className="space-y-2">
               {daily.map((day, i) => {
                 const info = getWeatherCodeInfo(day.weatherCode);
-                const dayName = i === 0 ? 'Today' : new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' });
+                const dayName = getDayName(day.date, i);
                 return (
                   <div key={day.date} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
                     <span className="text-xs font-medium text-heading w-12">{dayName}</span>
@@ -169,7 +255,7 @@ export default function DistrictDetail() {
 
         {/* Nearby Events */}
         <div className="glass-card p-4">
-          <h3 className="text-sm font-semibold text-heading mb-3">{t('home.active_events')}</h3>
+          <h3 className="text-sm font-semibold text-heading mb-3">{t('districts.nearby_events')}</h3>
           {districtEvents.length > 0 ? (
             <div className="space-y-2">
               {districtEvents.map(event => (
@@ -177,7 +263,14 @@ export default function DistrictDetail() {
                   <span className="text-lg">{getCategoryIcon(event.category)}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-heading truncate">{event.title}</p>
-                    <p className="text-[10px] text-body/50">{formatRelativeTime(event.date)}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[10px] text-body/50">{formatRelativeTime(event.date)}</p>
+                      {event.distance !== Infinity && (
+                        <p className="text-[10px] text-primary-500 font-medium">
+                          {i18n.language === 'bn' ? `${Math.round(event.distance)} কিমি দূরে` : `${Math.round(event.distance)} km away`}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
                         style={{ backgroundColor: `${getCategoryColor(event.category)}15`, color: getCategoryColor(event.category) }}>
@@ -190,6 +283,16 @@ export default function DistrictDetail() {
             <p className="text-xs text-body/40">{t('home.no_events')}</p>
           )}
         </div>
+
+        {/* Share Card */}
+        <ShareCard
+          district={district.name}
+          districtBn={district.namebn}
+          temperature={current?.temperature || 0}
+          condition={weatherInfo?.condition || ''}
+          conditionIcon={weatherInfo?.icon || '☀️'}
+          warning={warningStatus.label}
+        />
 
         {/* Share */}
         <button

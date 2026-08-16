@@ -1,10 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import L from 'leaflet';
 import { useEonetEvents } from '../hooks/useData';
 import { EonetEvent } from '../types';
 import { getCategoryIcon, getCategoryColor, getSeverityColor, formatRelativeTime, shareToWhatsApp, WB_BBOX } from '../utils/helpers';
-import { X, ExternalLink, Share2, ChevronDown, Layers } from 'lucide-react';
+import { haversineDistance } from '../data/districts';
+import { X, ExternalLink, Share2, ChevronDown, Layers, ToggleLeft, ToggleRight } from 'lucide-react';
+
+const WB_BBOX_OBJ = { minLng: 85.77, minLat: 21.38, maxLng: 89.99, maxLat: 27.05 };
+const NEARBY_BBOX = { minLng: 83.5, minLat: 19.5, maxLng: 92.5, maxLat: 29.5 };
+const DEFAULT_LOCATION = { lat: 22.57, lng: 88.36 };
+
+function getUserLocation(): { lat: number; lng: number } {
+  try {
+    const raw = localStorage.getItem('bmwatch_location');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') return parsed;
+    }
+  } catch {}
+  return DEFAULT_LOCATION;
+}
 
 export default function MapPage() {
   const { t, i18n } = useTranslation();
@@ -13,11 +29,90 @@ export default function MapPage() {
   const { events, loading, lastUpdated } = useEonetEvents();
   const [selectedEvent, setSelectedEvent] = useState<EonetEvent | null>(null);
   const [filter, setFilter] = useState<string>('all');
+  const [showNearby, setShowNearby] = useState(false);
+  const [nearbyEvents, setNearbyEvents] = useState<EonetEvent[]>([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
 
-  const activeEvents = events.filter(e => !e.closed);
-  const filteredEvents = filter === 'all' ? activeEvents : activeEvents.filter(e => e.category === filter);
+  const userLocation = getUserLocation();
 
-  const categories = [...new Set(activeEvents.map(e => e.category))];
+  const fetchNearby = useCallback(async (bbox: { minLng: number; minLat: number; maxLng: number; maxLat: number }) => {
+    setNearbyLoading(true);
+    try {
+      const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
+      const API_BASE = (typeof window !== 'undefined' && (window as any).__API_BASE__) || '';
+      const proxyUrl = `${API_BASE}/api/eonet?path=/events/geojson?status=open&days=7&bbox=${bboxStr}`;
+      const fallbackUrl = `https://eonet.gsfc.nasa.gov/api/v3/events/geojson?status=open&days=7&bbox=${bboxStr}`;
+
+      let data: any;
+      try {
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error('proxy failed');
+        data = await res.json();
+      } catch {
+        const res = await fetch(fallbackUrl);
+        if (!res.ok) throw new Error('EONET fetch failed');
+        data = await res.json();
+      }
+
+      const parsed: EonetEvent[] = (data.features || []).map((f: any) => ({
+        id: f.id || f.properties?.id || String(Math.random()),
+        title: f.properties?.title || 'Unknown Event',
+        category: f.properties?.categories?.[0]?.id || 'unknown',
+        categoryTitle: f.properties?.categories?.[0]?.title || 'Unknown',
+        description: f.properties?.description || '',
+        geometry: f.geometry ? [f.geometry] : [],
+        sources: f.properties?.sources || [],
+        closed: f.properties?.closed || null,
+        link: f.properties?.link || '',
+        magnitudeValue: f.properties?.magnitudeValue,
+        magnitudeUnit: f.properties?.magnitudeUnit,
+        date: f.properties?.date || new Date().toISOString(),
+      }));
+
+      setNearbyEvents(parsed);
+    } catch (e) {
+      console.error('Nearby EONET fetch failed:', e);
+      setNearbyEvents([]);
+    } finally {
+      setNearbyLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showNearby) {
+      fetchNearby(NEARBY_BBOX);
+      const interval = setInterval(() => fetchNearby(NEARBY_BBOX), 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    } else {
+      setNearbyEvents([]);
+    }
+  }, [showNearby, fetchNearby]);
+
+  const allOpenEvents = events.filter(e => !e.closed);
+  const nearbyOpen = showNearby ? nearbyEvents.filter(e => !e.closed && !allOpenEvents.some(ae => ae.id === e.id)) : [];
+  const mergedEvents = [...allOpenEvents, ...nearbyOpen];
+
+  const eventsWithDistance = mergedEvents.map(event => {
+    const geom = event.geometry?.[0];
+    let lat = 0, lng = 0;
+    if (geom) {
+      if (geom.type === 'Point') {
+        [lng, lat] = geom.coordinates as number[];
+      } else if (geom.type === 'Polygon' && Array.isArray(geom.coordinates)) {
+        const coords = geom.coordinates[0];
+        if (coords && Array.isArray(coords)) {
+          lat = (coords as unknown as number[][]).reduce((s, c) => s + (c as number[])[1], 0) / coords.length;
+          lng = (coords as unknown as number[][]).reduce((s, c) => s + (c as number[])[0], 0) / coords.length;
+        }
+      }
+    }
+    const dist = haversineDistance(userLocation.lat, userLocation.lng, lat, lng);
+    return { ...event, _distance: dist, _lat: lat, _lng: lng };
+  }).sort((a, b) => a._distance - b._distance);
+
+  const filteredEvents = filter === 'all' ? eventsWithDistance : eventsWithDistance.filter(e => e.category === filter);
+  const categories = [...new Set(mergedEvents.map(e => e.category))];
+  const wbEventsCount = allOpenEvents.length;
 
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
@@ -26,7 +121,7 @@ export default function MapPage() {
       center: [23.5, 87.5],
       zoom: 6,
       zoomControl: false,
-      maxBounds: [[19, 84], [29, 92]],
+      maxBounds: [[18, 82], [30, 94]],
     });
 
     L.control.zoom({ position: 'topright' }).addTo(map);
@@ -36,9 +131,8 @@ export default function MapPage() {
       maxZoom: 18,
     }).addTo(map);
 
-    // Draw WB outline (approximate bbox)
     L.rectangle(
-      [[21.38, 85.77], [27.05, 89.99]],
+      [[WB_BBOX_OBJ.minLat, WB_BBOX_OBJ.minLng], [WB_BBOX_OBJ.maxLat, WB_BBOX_OBJ.maxLng]],
       { color: '#0EA5E9', weight: 1, fillOpacity: 0.03, dashArray: '5,5' }
     ).addTo(map);
 
@@ -71,7 +165,6 @@ export default function MapPage() {
         lat = (coords as unknown as number[][]).reduce((s, c) => s + (c as number[])[1], 0) / coords.length;
         lng = (coords as unknown as number[][]).reduce((s, c) => s + (c as number[])[0], 0) / coords.length;
 
-        // Draw polygon for area events
         const polyCoords = (coords as unknown as number[][]).map((c) => [c[1], c[0]] as [number, number]);
         L.polygon(polyCoords, {
           color: getCategoryColor(event.category),
@@ -118,7 +211,7 @@ export default function MapPage() {
             filter === 'all' ? 'bg-heading text-white shadow-lg' : 'bg-white/90 text-heading shadow-card'
           }`}
         >
-          {t('map.events_in_wb')} ({activeEvents.length})
+          {t('map.events_in_wb')} ({wbEventsCount})
         </button>
         {categories.map(cat => (
           <button
@@ -133,6 +226,43 @@ export default function MapPage() {
           </button>
         ))}
       </div>
+
+      {/* Nearby Toggle */}
+      <div className="absolute top-14 left-3 z-40">
+        <button
+          onClick={() => setShowNearby(!showNearby)}
+          className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-card px-3 py-2 text-xs font-medium text-heading transition-all hover:shadow-lg"
+        >
+          {showNearby ? (
+            <ToggleRight className="w-5 h-5 text-primary" />
+          ) : (
+            <ToggleLeft className="w-5 h-5 text-gray-400" />
+          )}
+          <span className="whitespace-nowrap">{t('map.show_nearby')}</span>
+        </button>
+        {showNearby && (
+          <div className="mt-1 bg-primary-50/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-sm">
+            <p className="text-[10px] font-medium text-primary">{t('map.expand_200km')}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Zero Events Empty State */}
+      {!loading && wbEventsCount === 0 && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 w-80">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-6 text-center">
+            <div className="text-4xl mb-3">✅</div>
+            <p className="text-sm font-semibold text-heading leading-relaxed">
+              {t('map.no_active_events')}
+            </p>
+            {lastUpdated && (
+              <p className="text-[10px] text-body/50 mt-2">
+                {t('map.last_checked')}: {formatRelativeTime(lastUpdated.toISOString())}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Event Count Badge */}
       <div className="absolute bottom-24 left-3 z-40">
@@ -160,7 +290,7 @@ export default function MapPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+            <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
               <div className="bg-surface rounded-lg p-2">
                 <p className="text-body/50 text-[10px]">Date</p>
                 <p className="font-medium text-heading">{new Date(selectedEvent.date).toLocaleDateString()}</p>
@@ -171,6 +301,10 @@ export default function MapPage() {
                   <p className="font-medium text-heading">{selectedEvent.magnitudeValue} {selectedEvent.magnitudeUnit || ''}</p>
                 </div>
               )}
+              <div className="bg-surface rounded-lg p-2">
+                <p className="text-body/50 text-[10px]">{t('map.distance')}</p>
+                <p className="font-medium text-heading">{Math.round((selectedEvent as any)._distance)} {t('map.km_from_you')}</p>
+              </div>
             </div>
 
             {selectedEvent.description && (

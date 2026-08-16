@@ -10,148 +10,26 @@ interface RiverStation {
   trend: 'rising' | 'falling' | 'steady';
   lastUpdated: string;
   trendChange: number;
+  district: string;
+  rainfall24h: number;
 }
 
 interface RiverData {
   name: string;
   namebn: string;
   riverId: string;
+  district: string;
   stations: RiverStation[];
 }
 
+type StatusLevel = 'normal' | 'warning' | 'danger' | 'critical';
+
 const MOCK_RIVERS: RiverData[] = [
-  {
-    name: 'Ganga',
-    namebn: 'গঙ্গা',
-    riverId: 'ganga',
-    stations: [
-      {
-        name: 'Farakka Barrage',
-        namebn: 'ফরাক্কা ব্যারাজ',
-        currentLevel: 36.2,
-        dangerLevel: 34.5,
-        normalLevel: 28.0,
-        trend: 'rising',
-        lastUpdated: '2026-08-16T08:30:00Z',
-        trendChange: 0.4,
-      },
-      {
-        name: 'Patna',
-        namebn: 'পাটনা',
-        currentLevel: 42.8,
-        dangerLevel: 43.0,
-        normalLevel: 35.0,
-        trend: 'rising',
-        lastUpdated: '2026-08-16T08:15:00Z',
-        trendChange: 0.6,
-      },
-      {
-        name: 'Kanpur',
-        namebn: 'কানপুর',
-        currentLevel: 115.3,
-        dangerLevel: 116.0,
-        normalLevel: 110.5,
-        trend: 'steady',
-        lastUpdated: '2026-08-16T08:00:00Z',
-        trendChange: 0.0,
-      },
-    ],
-  },
-  {
-    name: 'Damodar',
-    namebn: 'দামোদর',
-    riverId: 'damodar',
-    stations: [
-      {
-        name: 'Panchet Dam',
-        namebn: 'পাঁচেট বাঁধ',
-        currentLevel: 52.6,
-        dangerLevel: 50.0,
-        normalLevel: 42.0,
-        trend: 'rising',
-        lastUpdated: '2026-08-16T09:00:00Z',
-        trendChange: 1.2,
-      },
-      {
-        name: 'Durgapur Barrage',
-        namebn: 'দুর্গাপুর ব্যারাজ',
-        currentLevel: 67.4,
-        dangerLevel: 65.0,
-        normalLevel: 58.0,
-        trend: 'falling',
-        lastUpdated: '2026-08-16T08:45:00Z',
-        trendChange: -0.3,
-      },
-      {
-        name: 'Burdwan',
-        namebn: 'বর্ধমান',
-        currentLevel: 18.9,
-        dangerLevel: 22.0,
-        normalLevel: 14.0,
-        trend: 'steady',
-        lastUpdated: '2026-08-16T08:30:00Z',
-        trendChange: 0.1,
-      },
-    ],
-  },
-  {
-    name: 'Teesta',
-    namebn: 'তিস্তা',
-    riverId: 'teesta',
-    stations: [
-      {
-        name: 'Gazole',
-        namebn: 'গাজোল',
-        currentLevel: 24.7,
-        dangerLevel: 25.0,
-        normalLevel: 18.0,
-        trend: 'rising',
-        lastUpdated: '2026-08-16T09:15:00Z',
-        trendChange: 0.8,
-      },
-      {
-        name: 'Jalpaiguri',
-        namebn: 'জলপাইগুড়ি',
-        currentLevel: 31.2,
-        dangerLevel: 29.0,
-        normalLevel: 22.0,
-        trend: 'rising',
-        lastUpdated: '2026-08-16T09:00:00Z',
-        trendChange: 1.5,
-      },
-    ],
-  },
-  {
-    name: 'Mahananda',
-    namebn: 'মহানন্দা',
-    riverId: 'mahananda',
-    stations: [
-      {
-        name: 'Siliguri',
-        namebn: 'শিলিগুড়ি',
-        currentLevel: 15.8,
-        dangerLevel: 16.0,
-        normalLevel: 10.5,
-        trend: 'rising',
-        lastUpdated: '2026-08-16T09:10:00Z',
-        trendChange: 0.5,
-      },
-      {
-        name: 'Malda',
-        namebn: 'মালদা',
-        currentLevel: 22.4,
-        dangerLevel: 21.0,
-        normalLevel: 16.0,
-        trend: 'falling',
-        lastUpdated: '2026-08-16T08:55:00Z',
-        trendChange: -0.2,
-      },
-    ],
-  },
   {
     name: 'Hooghly',
     namebn: 'হুগলি',
     riverId: 'hooghly',
+    district: 'Kolkata',
     stations: [
       {
         name: 'Barrackpore',
@@ -162,23 +40,136 @@ const MOCK_RIVERS: RiverData[] = [
         trend: 'steady',
         lastUpdated: '2026-08-16T09:05:00Z',
         trendChange: 0.0,
+        district: 'Kolkata',
+        rainfall24h: 45,
       },
+    ],
+  },
+  {
+    name: 'Damodar',
+    namebn: 'দামোদর',
+    riverId: 'damodar',
+    district: 'Burdwan',
+    stations: [
       {
-        name: 'Pragati Maidan',
-        namebn: 'প্রগতি ময়দান',
-        currentLevel: 4.6,
-        dangerLevel: 7.0,
-        normalLevel: 3.2,
+        name: 'Durgapur Barrage',
+        namebn: 'দুর্গাপুর ব্যারাজ',
+        currentLevel: 67.4,
+        dangerLevel: 65.0,
+        normalLevel: 58.0,
+        trend: 'rising',
+        lastUpdated: '2026-08-16T08:45:00Z',
+        trendChange: 1.2,
+        district: 'Burdwan',
+        rainfall24h: 112,
+      },
+    ],
+  },
+  {
+    name: 'Teesta',
+    namebn: 'তিস্তা',
+    riverId: 'teesta',
+    district: 'Alipurduar / Jalpaiguri',
+    stations: [
+      {
+        name: 'Gazole',
+        namebn: 'গাজোল',
+        currentLevel: 24.7,
+        dangerLevel: 25.0,
+        normalLevel: 18.0,
+        trend: 'rising',
+        lastUpdated: '2026-08-16T09:15:00Z',
+        trendChange: 0.8,
+        district: 'Alipurduar',
+        rainfall24h: 78,
+      },
+    ],
+  },
+  {
+    name: 'Ganga',
+    namebn: 'গঙ্গা',
+    riverId: 'ganga',
+    district: 'Malda',
+    stations: [
+      {
+        name: 'Farakka',
+        namebn: 'ফরাক্কা',
+        currentLevel: 36.2,
+        dangerLevel: 34.5,
+        normalLevel: 28.0,
+        trend: 'rising',
+        lastUpdated: '2026-08-16T08:30:00Z',
+        trendChange: 0.4,
+        district: 'Malda',
+        rainfall24h: 55,
+      },
+    ],
+  },
+  {
+    name: 'Mahananda',
+    namebn: 'মহানন্দা',
+    riverId: 'mahananda',
+    district: 'Uttar Dinajpur',
+    stations: [
+      {
+        name: 'Siliguri',
+        namebn: 'শিলিগুড়ি',
+        currentLevel: 15.8,
+        dangerLevel: 16.0,
+        normalLevel: 10.5,
+        trend: 'rising',
+        lastUpdated: '2026-08-16T09:10:00Z',
+        trendChange: 0.5,
+        district: 'Uttar Dinajpur',
+        rainfall24h: 92,
+      },
+    ],
+  },
+  {
+    name: 'Subarnarekha',
+    namebn: 'সোনারেখা',
+    riverId: 'subarnarekha',
+    district: 'Jhargram',
+    stations: [
+      {
+        name: 'Jhargram',
+        namebn: 'ঝাড়গ্রাম',
+        currentLevel: 11.3,
+        dangerLevel: 12.0,
+        normalLevel: 8.5,
         trend: 'falling',
-        lastUpdated: '2026-08-16T08:50:00Z',
-        trendChange: -0.1,
+        lastUpdated: '2026-08-16T08:55:00Z',
+        trendChange: -0.2,
+        district: 'Jhargram',
+        rainfall24h: 38,
       },
     ],
   },
 ];
 
-function isAboveDanger(station: RiverStation): boolean {
-  return station.currentLevel > station.dangerLevel;
+function getStatus(station: RiverStation): StatusLevel {
+  let effectiveCurrent = station.currentLevel;
+  if (station.rainfall24h > 100) {
+    effectiveCurrent = station.dangerLevel * 1.1;
+  }
+
+  if (effectiveCurrent >= station.dangerLevel * 1.1) return 'critical';
+  if (effectiveCurrent >= station.dangerLevel) return 'danger';
+  if (effectiveCurrent >= station.dangerLevel * 0.8) return 'warning';
+  return 'normal';
+}
+
+function getStatusColors(status: StatusLevel): string {
+  switch (status) {
+    case 'critical':
+      return 'bg-red-100 text-red-700 border-red-200';
+    case 'danger':
+      return 'bg-orange-100 text-orange-700 border-orange-200';
+    case 'warning':
+      return 'bg-amber-100 text-amber-700 border-amber-200';
+    default:
+      return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+  }
 }
 
 function getLevelPercent(station: RiverStation): number {
@@ -187,8 +178,9 @@ function getLevelPercent(station: RiverStation): number {
 }
 
 function getBarColor(station: RiverStation): string {
-  if (isAboveDanger(station)) return 'bg-red-500';
-  if (station.currentLevel > station.dangerLevel * 0.9) return 'bg-amber-500';
+  const status = getStatus(station);
+  if (status === 'critical' || status === 'danger') return 'bg-red-500';
+  if (status === 'warning') return 'bg-amber-500';
   return 'bg-emerald-500';
 }
 
@@ -208,10 +200,20 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
 }
 
-function StationCard({ station, t }: { station: RiverStation; t: (key: string) => string }) {
-  const aboveDanger = isAboveDanger(station);
+function StationCard({
+  station,
+  t,
+  isBn,
+}: {
+  station: RiverStation;
+  t: (key: string) => string;
+  isBn: boolean;
+}) {
+  const status = getStatus(station);
+  const effectiveCurrent = station.rainfall24h > 100 ? station.dangerLevel * 1.1 : station.currentLevel;
   const pct = getLevelPercent(station);
   const barColor = getBarColor(station);
+  const isAutoFlagged = station.rainfall24h > 100;
 
   return (
     <div className="glass-card p-3 space-y-2.5 animate-slide-up">
@@ -219,23 +221,36 @@ function StationCard({ station, t }: { station: RiverStation; t: (key: string) =
         <div className="flex items-center gap-1.5">
           <MapPin className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-heading">{station.name}</p>
-            <p className="text-xs text-body/70">{station.namebn}</p>
+            <p className="text-sm font-semibold text-heading">
+              {isBn ? station.namebn : station.name}
+            </p>
+            <p className="text-[11px] text-body/60">{station.namebn} · {station.district}</p>
           </div>
         </div>
-        {aboveDanger && (
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold animate-pulse">
-            <AlertTriangle className="w-3 h-3" />
-            {t('floods.above_danger')}
-          </span>
-        )}
+        <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusColors(status)} ${status === 'critical' ? 'animate-pulse' : ''}`}>
+          {(status === 'danger' || status === 'critical') && <AlertTriangle className="w-3 h-3" />}
+          {t(`floods.${status}`)}
+        </span>
       </div>
+
+      {isAutoFlagged && (
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-lg border border-red-100">
+          <AlertTriangle className="w-3 h-3 text-red-500" />
+          <span className="text-[10px] text-red-600 font-medium">
+            {isBn
+              ? `২৪ ঘণ্টায় বৃষ্টিপাত ${station.rainfall24h}মিমি (>১০০মিমি) — স্বয়ংক্রিয় বিপদ চিহ্নিত`
+              : `24h rainfall ${station.rainfall24h}mm (>100mm) — auto-flagged to Danger`}
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-2">
         <div className="text-center">
           <p className="text-[10px] text-body/60 mb-0.5">{t('floods.current')}</p>
-          <p className={`text-lg font-poppins font-bold ${aboveDanger ? 'text-red-600' : 'text-heading'}`}>
-            {station.currentLevel}
+          <p className={`text-lg font-poppins font-bold ${
+            status === 'danger' || status === 'critical' ? 'text-red-600' : 'text-heading'
+          }`}>
+            {isAutoFlagged ? effectiveCurrent.toFixed(1) : station.currentLevel}
           </p>
           <p className="text-[10px] text-body/50">m</p>
         </div>
@@ -254,7 +269,10 @@ function StationCard({ station, t }: { station: RiverStation; t: (key: string) =
       {/* Level bar */}
       <div className="space-y-1">
         <div className="relative h-2.5 bg-slate-100 rounded-full overflow-hidden">
-          <div className={`absolute inset-y-0 left-0 rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
+          <div
+            className={`absolute inset-y-0 left-0 rounded-full transition-all duration-700 ${barColor}`}
+            style={{ width: `${pct}%` }}
+          />
           <div
             className="absolute top-0 bottom-0 w-0.5 bg-red-400"
             style={{ left: `${(station.dangerLevel / (station.dangerLevel * 1.2)) * 100}%` }}
@@ -269,8 +287,14 @@ function StationCard({ station, t }: { station: RiverStation; t: (key: string) =
       <div className="flex items-center justify-between pt-1 border-t border-slate-100">
         <div className="flex items-center gap-1.5">
           <TrendIcon trend={station.trend} className="w-3.5 h-3.5" />
-          <span className={`text-xs font-medium ${station.trend === 'rising' ? 'text-red-600' : station.trend === 'falling' ? 'text-emerald-600' : 'text-slate-500'}`}>
-            {station.trend === 'rising' ? `+${station.trendChange}m ${t('floods.rising')}` : station.trend === 'falling' ? `${station.trendChange}m ${t('floods.falling')}` : t('floods.steady')}
+          <span className={`text-xs font-medium ${
+            station.trend === 'rising' ? 'text-red-600' : station.trend === 'falling' ? 'text-emerald-600' : 'text-slate-500'
+          }`}>
+            {station.trend === 'rising'
+              ? `+${station.trendChange}m ${t('floods.rising')}`
+              : station.trend === 'falling'
+              ? `${station.trendChange}m ${t('floods.falling')}`
+              : t('floods.steady')}
           </span>
         </div>
         <span className="text-[10px] text-body/50">{formatTime(station.lastUpdated)}</span>
@@ -280,10 +304,14 @@ function StationCard({ station, t }: { station: RiverStation; t: (key: string) =
 }
 
 export default function Floods() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
 
   const allStations = MOCK_RIVERS.flatMap((r) => r.stations);
-  const dangerCount = allStations.filter(isAboveDanger).length;
+  const dangerCount = allStations.filter((s) => {
+    const status = getStatus(s);
+    return status === 'danger' || status === 'critical';
+  }).length;
   const risingCount = allStations.filter((s) => s.trend === 'rising').length;
 
   return (
@@ -297,7 +325,7 @@ export default function Floods() {
         <p className="text-xs text-body/70 ml-8">{t('floods.subtitle')}</p>
 
         {/* Summary badges */}
-        <div className="flex gap-2 mt-3 ml-8">
+        <div className="flex gap-2 mt-3 ml-8 flex-wrap">
           {dangerCount > 0 && (
             <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold animate-pulse">
               <AlertTriangle className="w-3.5 h-3.5" />
@@ -314,9 +342,10 @@ export default function Floods() {
       {/* Rivers */}
       <div className="space-y-4 px-4">
         {MOCK_RIVERS.map((river, rIdx) => {
-          const riverDanger = river.stations.some(isAboveDanger);
-          const maxLevel = Math.max(...river.stations.map((s) => s.currentLevel));
-          const maxDanger = Math.max(...river.stations.map((s) => s.dangerLevel));
+          const riverDanger = river.stations.some((s) => {
+            const status = getStatus(s);
+            return status === 'danger' || status === 'critical';
+          });
 
           return (
             <section key={river.riverId} className="animate-slide-up" style={{ animationDelay: `${rIdx * 100}ms` }}>
@@ -324,8 +353,13 @@ export default function Floods() {
                 <div className="flex items-center gap-2">
                   <Droplets className={`w-5 h-5 ${riverDanger ? 'text-red-500' : 'text-blue-500'}`} />
                   <div>
-                    <h2 className="text-base font-poppins font-bold text-heading">{river.name}</h2>
-                    <p className="text-xs text-body/60">{river.namebn}</p>
+                    <h2 className="text-base font-poppins font-bold text-heading">
+                      {river.name}
+                      <span className="text-xs font-normal text-body/60 ml-1.5">
+                        {river.namebn}
+                      </span>
+                    </h2>
+                    <p className="text-[11px] text-body/60">{river.district}</p>
                   </div>
                 </div>
                 {riverDanger && (
@@ -342,6 +376,7 @@ export default function Floods() {
                     key={`${river.riverId}-${sIdx}`}
                     station={station}
                     t={t}
+                    isBn={isBn}
                   />
                 ))}
               </div>

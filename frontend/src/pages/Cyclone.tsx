@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import L from 'leaflet';
-import { Wind, Eye, Navigation, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
-import { districts } from '../data/districts';
+import { Wind, Eye, Navigation, Clock, AlertTriangle, ChevronDown, Radio } from 'lucide-react';
+import { useEonetEvents } from '../hooks/useData';
 import { CycloneData } from '../types';
-import { getSeverityColor } from '../utils/helpers';
 
 const CATEGORY_COLORS: Record<string, string> = {
   'Depression': '#38BDF8',
@@ -96,6 +95,17 @@ function getCountdown(target: string): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+function getCountdownHours(target: string): number {
+  const diff = new Date(target).getTime() - Date.now();
+  if (diff <= 0) return 0;
+  return Math.ceil(diff / 3600000);
+}
+
+function isCycloneSeason(): boolean {
+  const month = new Date().getMonth() + 1;
+  return month >= 6 && month <= 11;
+}
+
 export default function Cyclone() {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
@@ -104,11 +114,30 @@ export default function Cyclone() {
   const [countdown, setCountdown] = useState('');
   const [showAllBulletins, setShowAllBulletins] = useState(false);
 
+  const { events: eonetEvents } = useEonetEvents();
+
+  const severeStormEvents = useMemo(() => {
+    return eonetEvents.filter((e) => {
+      if (e.category !== 'severeStorms') return false;
+      const coords = e.geometry?.[0]?.coordinates;
+      if (!coords) return false;
+      const flat: number[] = Array.isArray(coords[0]) ? (coords as number[][])[0] : coords as number[];
+      const lng = flat[0];
+      const lat = flat[1];
+      if (typeof lng !== 'number' || typeof lat !== 'number') return false;
+      return lng >= 78 && lng <= 95 && lat >= 6 && lat <= 22;
+    });
+  }, [eonetEvents]);
+
   const cyclone = MOCK_CYCLONE;
   const landfallTime = cyclone.forecastTrack[cyclone.forecastTrack.length - 1].time;
+  const landfallHours = getCountdownHours(landfallTime);
   const displayedBulletins = showAllBulletins
     ? cyclone.bulletins
     : cyclone.bulletins.slice(0, 2);
+
+  const seasonActive = isCycloneSeason();
+  const hasLiveCyclone = severeStormEvents.length > 0;
 
   useEffect(() => {
     const tick = () => setCountdown(getCountdown(landfallTime));
@@ -206,6 +235,39 @@ export default function Cyclone() {
         { closeButton: false }
       );
 
+    severeStormEvents.forEach((event) => {
+      const coords = event.geometry?.[0]?.coordinates;
+      if (!coords) return;
+      const flat: number[] = Array.isArray(coords[0]) ? (coords as number[][])[0] : coords as number[];
+      const lng = flat[0];
+      const lat = flat[1];
+      if (typeof lng !== 'number' || typeof lat !== 'number') return;
+
+      const stormIcon = L.divIcon({
+        className: '',
+        html: `<div style="
+          width:18px;height:18px;border-radius:50%;
+          background:#F97316;border:2px solid #fff;
+          box-shadow:0 0 12px #F9731680;
+          display:flex;align-items:center;justify-content:center;
+        ">
+          <div style="width:5px;height:5px;border-radius:50%;background:#fff;"></div>
+        </div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+
+      L.marker([lat, lng], { icon: stormIcon })
+        .addTo(map)
+        .bindPopup(
+          `<div style="font-family:Inter,sans-serif;padding:4px 0;">
+            <div style="font-size:12px;font-weight:600;color:#0F172A;">⚠ ${event.title}</div>
+            <div style="font-size:11px;color:#475569;margin-top:2px;">${event.categoryTitle}</div>
+          </div>`,
+          { closeButton: false }
+        );
+    });
+
     map.flyTo([17.5, 88.0], 7, { duration: 1.5 });
 
     mapInstance.current = map;
@@ -214,12 +276,65 @@ export default function Cyclone() {
       map.remove();
       mapInstance.current = null;
     };
-  }, []);
+  }, [severeStormEvents]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+      {/* Cyclone Season Banner */}
+      <div className="px-4 pt-4 pb-1">
+        <div
+          className={`flex items-center gap-3 rounded-2xl px-4 py-3 border backdrop-blur-sm ${
+            seasonActive || hasLiveCyclone
+              ? 'bg-red-500/10 border-red-500/30'
+              : 'bg-emerald-500/10 border-emerald-500/30'
+          }`}
+        >
+          <span
+            className={`relative flex h-2.5 w-2.5 flex-shrink-0 ${
+              seasonActive || hasLiveCyclone ? '' : ''
+            }`}
+          >
+            <span
+              className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                seasonActive || hasLiveCyclone
+                  ? 'bg-red-500 animate-ping'
+                  : 'bg-emerald-500'
+              }`}
+            />
+            <span
+              className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
+                seasonActive || hasLiveCyclone ? 'bg-red-500' : 'bg-emerald-500'
+              }`}
+            />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p
+              className={`text-sm font-semibold ${
+                seasonActive || hasLiveCyclone ? 'text-red-300' : 'text-emerald-300'
+              }`}
+            >
+              {seasonActive || hasLiveCyclone
+                ? t('cyclone.season_active')
+                : t('cyclone.off_season')}
+            </p>
+            {severeStormEvents.length > 0 && (
+              <p className="text-[11px] text-red-400/80 mt-0.5">
+                {isBn
+                  ? `নাসা ইওনেট: ${severeStormEvents.length}টি তীব্র ঝড় সনাক্ত`
+                  : `NASA EONET: ${severeStormEvents.length} severe storm(s) detected`}
+              </p>
+            )}
+          </div>
+          {seasonActive && (
+            <span className="flex items-center gap-1 bg-red-500/20 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse flex-shrink-0">
+              {t('common.live')}
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="px-4 pt-5 pb-3">
+      <div className="px-4 pt-3 pb-3">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🌀</span>
           <h1 className="text-2xl font-bold text-white">{t('cyclone.title')}</h1>
@@ -243,7 +358,7 @@ export default function Cyclone() {
               {countdown}
             </span>
             <span className="text-xs text-red-300/70">
-              {isBn ? 'সম্ভাব্য স্থলভাগ' : 'Est. Landfall'}
+              {t('cyclone.landfall_in').replace('X', landfallHours.toString())}
             </span>
           </div>
         </div>
@@ -343,6 +458,29 @@ export default function Cyclone() {
           </div>
         </div>
       </div>
+
+      {/* EONET Severe Storms Banner */}
+      {severeStormEvents.length > 0 && (
+        <div className="px-4 mb-3">
+          <div className="glass-card p-3 border border-amber-500/20 bg-amber-500/5">
+            <div className="flex items-center gap-2">
+              <Radio className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-amber-300">
+                  {isBn
+                    ? `নাসা ইওনেট — ${severeStormEvents.length}টি তীব্র ঝড় বঙ্গোপসাগরে`
+                    : `NASA EONET — ${severeStormEvents.length} severe storm(s) in Bay of Bengal`}
+                </p>
+                {severeStormEvents.map((evt) => (
+                  <p key={evt.id} className="text-[11px] text-amber-400/70 mt-0.5">
+                    {evt.title} · {evt.categoryTitle}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Full-screen Map */}
       <div className="px-4 mb-3">

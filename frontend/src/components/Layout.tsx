@@ -1,6 +1,8 @@
 import { useLocation, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Home, Map, Users, Bell, ShieldAlert, AlertTriangle, Droplets, Mountain, Info, Settings } from 'lucide-react';
+import OfflineBanner from './OfflineBanner';
+import Footer from './Footer';
 
 const navItems = [
   { path: '/', icon: Home, labelKey: 'nav.home' },
@@ -53,9 +55,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+      <OfflineBanner />
 
       <main className="pt-14 max-w-lg mx-auto">
         {children}
+        <Footer />
       </main>
 
       <nav className="bottom-nav">

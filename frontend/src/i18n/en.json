@@ -44,7 +44,21 @@
     "active_events": "Active Events",
     "weather_forecast": "Weather Forecast",
     "warning": "Warning",
-    "current_temp": "Current Temperature"
+    "current_temp": "Current Temperature",
+    "my_location": "My Location",
+    "my_location_desc": "Detect your exact location for weather",
+    "location_permission": "Allow location access to see weather for your area",
+    "outside_wb": "This area is outside West Bengal",
+    "your_district_is": "Your district",
+    "update_location": "Update",
+    "location_saved": "Location saved",
+    "location_denied": "Location access denied",
+    "use_district_selector": "Use district selector instead",
+    "imd_warnings": "IMD Warnings",
+    "rain_chance_title": "Will it rain in the next 12 hours?",
+    "rain_chance_high": "% chance — carry an umbrella",
+    "rain_chance_low": "% chance — clear skies ahead",
+    "greeting_night": "Good Night"
   },
   "severity": {
     "safe": "Safe",
@@ -66,7 +80,13 @@
     "distance": "Distance",
     "km_away": "km away",
     "category": "Category",
-    "source": "Source"
+    "source": "Source",
+    "no_active_events": "No active disasters — West Bengal is having a peaceful time",
+    "show_nearby": "Show events from neighboring states/countries",
+    "expand_200km": "Expanding to 200km around West Bengal",
+    "last_checked": "Last checked",
+    "km_from_you": "km from you",
+    "sort_by_distance": "Sorted by distance"
   },
   "districts": {
     "title": "Districts of West Bengal",
@@ -82,7 +102,10 @@
     "forecast": "Forecast",
     "river_levels": "River Levels",
     "event_history": "Event History (30 days)",
-    "no_rivers": "No major river data"
+    "no_rivers": "No major river data",
+    "nearby_events": "Nearby Events",
+    "warning_status": "Warning Status",
+    "subscribe_district": "Enable alerts for this district"
   },
   "cyclone": {
     "title": "Cyclone Tracker",
@@ -93,18 +116,31 @@
     "category": "Category",
     "projected_path": "Projected Path",
     "bulletins": "Bulletins",
-    "countdown": "Expected arrival"
+    "countdown": "Expected arrival",
+    "off_season": "No cyclone season — data active",
+    "season_active": "Cyclone season active",
+    "landfall_in": "Landfall: X hours away"
   },
   "floods": {
     "title": "Flood & River Watch",
+    "subtitle": "River level monitoring",
     "danger_level": "Danger Level",
     "current_level": "Current Level",
     "normal_level": "Normal Level",
     "above_danger": "ABOVE DANGER MARK",
+    "stations_above_danger": "stations above danger",
     "rising": "Rising",
     "falling": "Falling",
     "steady": "Steady",
-    "no_data": "No flood data available"
+    "no_data": "No flood data available",
+    "normal": "Normal",
+    "warning": "Warning",
+    "danger": "Danger",
+    "critical": "Critical",
+    "alert": "Alert",
+    "info": "This data is approximate from CWC sources. Always follow official advisories.",
+    "last_sync": "Last sync: Just now",
+    "current": "Current"
   },
   "earthquake": {
     "title": "Earthquake Monitor",
@@ -228,6 +264,8 @@
     "last_updated": "Last updated",
     "live": "LIVE",
     "offline": "Offline - showing cached data",
-    "unavailable": "Data unavailable"
+    "unavailable": "Data unavailable",
+    "updated": "Updated",
+    "showing_cached": "Showing cached data"
   }
 }
