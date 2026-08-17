@@ -126,6 +126,80 @@ export function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text);
 }
 
+const BENGALI_DIGITS = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+
+export function toBengaliNum(n: number): string {
+  return String(Math.round(n)).replace(/[0-9]/g, d => BENGALI_DIGITS[parseInt(d)]);
+}
+
+export function bengaliTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  return `${toBengaliNum(h)}:${m < 10 ? '০' : ''}${toBengaliNum(m)}`;
+}
+
+export function banglaDayName(dateStr: string, isToday: boolean): string {
+  if (isToday) return 'আজ';
+  const days = ['রবি', 'সোম', 'মঙ্ল', 'বুধ', 'বৃহ', 'শুক্র', 'শনি'];
+  return days[new Date(dateStr).getDay()];
+}
+
+export function getWindLabel(speed: number): string {
+  if (speed < 12) return 'হালকা';
+  if (speed < 29) return 'মাঝারি';
+  if (speed < 50) return 'প্রবল';
+  return 'বিপজ্জনক';
+}
+
+export function getWindLabelEn(speed: number): string {
+  if (speed < 12) return 'Light';
+  if (speed < 29) return 'Moderate';
+  if (speed < 50) return 'Strong';
+  return 'Dangerous';
+}
+
+export function getUVLabel(uv: number): { text: string; color: string } {
+  if (uv <= 2) return { text: 'নিচু', color: '#22C55E' };
+  if (uv <= 5) return { text: 'মাঝারি', color: '#EAB308' };
+  if (uv <= 7) return { text: 'উচ্চ — সানস্ক্রিন দিন', color: '#F59E0B' };
+  if (uv <= 10) return { text: 'খুব উচ্চ', color: '#EF4444' };
+  return { text: 'চরম — বাইরে যাবেন না', color: '#7C3AED' };
+}
+
+export function getUVLabelEn(uv: number): { text: string; color: string } {
+  if (uv <= 2) return { text: 'Low', color: '#22C55E' };
+  if (uv <= 5) return { text: 'Moderate', color: '#EAB308' };
+  if (uv <= 7) return { text: 'High — use sunscreen', color: '#F59E0B' };
+  if (uv <= 10) return { text: 'Very High', color: '#EF4444' };
+  return { text: 'Extreme — stay indoors', color: '#7C3AED' };
+}
+
+export function getAQILabel(aqi: number): { text: string; color: string } {
+  if (aqi <= 50) return { text: 'ভালো', color: '#22C55E' };
+  if (aqi <= 100) return { text: 'গ্রহণযোগ্য', color: '#EAB308' };
+  if (aqi <= 150) return { text: 'সংবেদনশীলদের জন্য খারাপ', color: '#F97316' };
+  if (aqi <= 200) return { text: 'খারাপ', color: '#EF4444' };
+  if (aqi <= 300) return { text: 'খুব খারাপ', color: '#DC2626' };
+  return { text: 'বিপজ্জনক', color: '#7C3AED' };
+}
+
+export function getAQILabelEn(aqi: number): { text: string; color: string } {
+  if (aqi <= 50) return { text: 'Good', color: '#22C55E' };
+  if (aqi <= 100) return { text: 'Fair', color: '#EAB308' };
+  if (aqi <= 150) return { text: 'Poor (sensitive)', color: '#F97316' };
+  if (aqi <= 200) return { text: 'Bad', color: '#EF4444' };
+  if (aqi <= 300) return { text: 'Very Bad', color: '#DC2626' };
+  return { text: 'Hazardous', color: '#7C3AED' };
+}
+
+export function getPrecipLabel(mm: number): string {
+  if (mm < 2.5) return 'হালকা';
+  if (mm < 10) return 'মাঝারি';
+  if (mm < 50) return 'ভারী';
+  return 'অতি ভারী';
+}
+
 export const EVENT_TYPES = ['floods', 'severeStorms', 'earthquakes', 'landslides', 'temperatureExtremes', 'dustAndHaze'] as const;
 export const EVENT_TYPE_LABELS: Record<string, { en: string; bn: string }> = {
   floods: { en: 'Floods', bn: 'বন্যা' },

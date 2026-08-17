@@ -61,7 +61,17 @@
     "greeting_night": "Good Night",
     "location_privacy": "Location stays on your device only",
     "your_location": "Your Location",
-    "you_are_here": "You are here"
+    "you_are_here": "You are here",
+    "hourly_title": "HOURLY FORECAST",
+    "now": "Now",
+    "status_until": "until",
+    "precipitation_title": "Precipitation",
+    "precipitation_amount": "Today's total",
+    "wind_title": "Wind",
+    "wind_max_today": "Today's max",
+    "humidity_avg_today": "Today's avg",
+    "temp_title": "Temperature",
+    "aqi_title": "Air Quality (AQI)"
   },
   "severity": {
     "safe": "Safe",

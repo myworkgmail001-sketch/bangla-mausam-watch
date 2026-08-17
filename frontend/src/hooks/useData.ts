@@ -169,6 +169,25 @@ export function useOpenMeteo(lat: number, lng: number) {
   return { current, hourly, daily, loading, error, refetch: fetchData };
 }
 
+export function useAirQuality(lat: number, lng: number) {
+  const [aqi, setAqi] = useState<{ european: number; us: number } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=european_aqi,us_aqi`, { signal: controller.signal })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        setAqi({ european: data.current?.european_aqi ?? 0, us: data.current?.us_aqi ?? 0 });
+        setLoading(false);
+      })
+      .catch(() => { setAqi(null); setLoading(false); });
+    return () => controller.abort();
+  }, [lat, lng]);
+
+  return { aqi, loading };
+}
+
 export function useGeolocation() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [error, setError] = useState<string | null>(null);

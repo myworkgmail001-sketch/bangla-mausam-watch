@@ -61,7 +61,17 @@
     "greeting_night": "শুভ রাত্রি",
     "location_privacy": "লোকেশন শুধু আপনার ডিভাইসে সংরক্ষিত থাকে",
     "your_location": "আপনার অবস্থান",
-    "you_are_here": "আপনি এখানে আছেন"
+    "you_are_here": "আপনি এখানে আছেন",
+    "hourly_title": "আজকের ঘণ্টাভিত্তিক পূর্বাভাস",
+    "now": "এখন",
+    "status_until": "পর্যন্ত চলবে",
+    "precipitation_title": "বৃষ্টিপাত",
+    "precipitation_amount": "আজকের পরিমাণ",
+    "wind_title": "বাতাস",
+    "wind_max_today": "আজকের সর্বাধিক",
+    "humidity_avg_today": "আজকের গড়",
+    "temp_title": "তাপমাত্রা",
+    "aqi_title": "বায়ুর মান (AQI)"
   },
   "severity": {
     "safe": "নিরাপদ",
