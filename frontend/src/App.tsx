@@ -1,6 +1,6 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Layout from './components/Layout';
 import Loading from './components/Loading';
 import './i18n';
@@ -17,12 +17,26 @@ const Earthquake = lazy(() => import('./pages/Earthquake'));
 const Admin = lazy(() => import('./pages/Admin'));
 const About = lazy(() => import('./pages/About'));
 
-export default function App() {
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
+};
+
+function AnimatedRoutes() {
+  const location = useLocation();
   return (
-    <BrowserRouter>
-      <Layout>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        variants={pageVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+      >
         <Suspense fallback={<Loading />}>
-          <Routes>
+          <Routes location={location}>
             <Route path="/" element={<Home />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/districts" element={<Districts />} />
@@ -36,6 +50,16 @@ export default function App() {
             <Route path="/about" element={<About />} />
           </Routes>
         </Suspense>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Layout>
+        <AnimatedRoutes />
       </Layout>
     </BrowserRouter>
   );

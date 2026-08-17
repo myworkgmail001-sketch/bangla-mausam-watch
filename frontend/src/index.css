@@ -95,3 +95,87 @@
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes weatherGradientDrift {
+  0%, 100% { opacity: 0.4; transform: translateY(0) scale(1); }
+  25% { opacity: 0.6; transform: translateY(-8px) scale(1.02); }
+  50% { opacity: 0.5; transform: translateY(-4px) scale(1.01); }
+  75% { opacity: 0.55; transform: translateY(-10px) scale(1.015); }
+}
+
+.weather-gradient-drift {
+  animation: weatherGradientDrift 8s ease-in-out infinite;
+}
+
+@keyframes rainDrop {
+  0% { transform: translateY(-20px); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(280px); opacity: 0; }
+}
+
+.weather-rain-drops > div {
+  animation: rainDrop 1.2s linear infinite;
+}
+
+@keyframes pingPulse {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-ping-pulse {
+  animation: pingPulse 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes bounceDot {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.animate-bounce-dot {
+  animation: bounceDot 1s ease-in-out infinite;
+}
+
+@keyframes shimmerBadge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.severity-badge-shimmer {
+  animation: shimmerBadge 2s ease-in-out infinite;
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spinSlow 1.2s linear infinite;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer,
+  .weather-gradient-drift,
+  .weather-rain-drops > div,
+  .animate-ping-pulse,
+  .animate-bounce-dot,
+  .severity-badge-shimmer {
+    animation: none !important;
+  }
+  .weather-rain-drops { display: none; }
+}

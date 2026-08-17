@@ -5,6 +5,7 @@ import { useEonetEvents } from '../hooks/useData';
 import { EonetEvent } from '../types';
 import { getCategoryIcon, getCategoryColor, getSeverityColor, formatRelativeTime, shareToWhatsApp, WB_BBOX } from '../utils/helpers';
 import { haversineDistance } from '../data/districts';
+import { motion } from 'framer-motion';
 import { X, ExternalLink, Share2, ChevronDown, Layers, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const WB_BBOX_OBJ = { minLng: 85.77, minLat: 21.38, maxLng: 89.99, maxLat: 27.05 };
@@ -201,7 +202,17 @@ export default function MapPage() {
         weight: 3,
         opacity: 1,
         fillOpacity: 0.9,
-        className: 'animate-bounce-pin',
+      }).addTo(map);
+
+      // Outer ping ring for live events
+      L.circleMarker([lat, lng], {
+        radius: 8,
+        fillColor: color,
+        color: color,
+        weight: 1,
+        opacity: 0.4,
+        fillOpacity: 0.15,
+        className: 'animate-ping-pulse',
       }).addTo(map);
 
       marker.bindPopup(`
@@ -223,25 +234,27 @@ export default function MapPage() {
 
       {/* Filter Bar */}
       <div className="absolute top-3 left-3 right-3 z-40 flex gap-2 overflow-x-auto pb-2">
-        <button
+        <motion.button
           onClick={() => setFilter('all')}
+          whileTap={{ scale: 0.95 }}
           className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
             filter === 'all' ? 'bg-heading text-white shadow-lg' : 'bg-white/90 text-heading shadow-card'
           }`}
         >
           {t('map.events_in_wb')} ({wbEventsCount})
-        </button>
+        </motion.button>
         {categories.map(cat => (
-          <button
+          <motion.button
             key={cat}
             onClick={() => setFilter(cat)}
+            whileTap={{ scale: 0.95 }}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex items-center gap-1 transition-all ${
               filter === cat ? 'bg-heading text-white shadow-lg' : 'bg-white/90 text-heading shadow-card'
             }`}
           >
             <span>{getCategoryIcon(cat)}</span>
             {cat}
-          </button>
+          </motion.button>
         ))}
       </div>
 

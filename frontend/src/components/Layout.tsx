@@ -1,6 +1,7 @@
 import { useLocation, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Home, Map, Users, Bell, ShieldAlert, AlertTriangle, Droplets, Mountain, Info, Settings } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Home, Map, Users, Bell, ShieldAlert, AlertTriangle } from 'lucide-react';
 import OfflineBanner from './OfflineBanner';
 import Footer from './Footer';
 
@@ -70,13 +71,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link
                 key={path}
                 to={path}
-                className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all duration-200 ${
+                className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all duration-200 relative ${
                   isActive
                     ? 'text-primary-500'
                     : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
+                {isActive && (
+                  <motion.div
+                    className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary-500"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                  />
+                )}
                 <span className={`text-[10px] font-medium ${isActive ? 'text-primary-600' : ''}`}>
                   {t(labelKey)}
                 </span>

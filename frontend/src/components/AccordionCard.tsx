@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 
 interface AccordionCardProps {
@@ -13,7 +14,11 @@ export default function AccordionCard({ title, summary, children, defaultOpen = 
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="glass-card overflow-hidden">
+    <motion.div
+      className="glass-card overflow-hidden"
+      whileTap={{ scale: 0.985 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+    >
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-gray-50 transition-colors"
@@ -25,9 +30,12 @@ export default function AccordionCard({ title, summary, children, defaultOpen = 
             <span className="text-xs text-body/60 truncate flex-shrink-0 ml-auto">{summary}</span>
           )}
         </div>
-        <ChevronDown
-          className={`w-4 h-4 text-body/40 flex-shrink-0 ml-2 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-        />
+        <motion.div
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown className="w-4 h-4 text-body/40 flex-shrink-0 ml-2" />
+        </motion.div>
       </button>
       <div
         className="overflow-hidden transition-all duration-300 ease-in-out"
@@ -37,6 +45,6 @@ export default function AccordionCard({ title, summary, children, defaultOpen = 
           {children}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -524,11 +524,11 @@ export default function Alerts() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span
-                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${alert.severity === 'orange' || alert.severity === 'red' ? 'severity-badge-shimmer' : ''}`}
                   style={{ backgroundColor: getSeverityColor(alert.severity) }}
                 />
                 <span
-                  className="text-xs font-semibold uppercase tracking-wide"
+                  className={`text-xs font-semibold uppercase tracking-wide ${alert.severity === 'orange' || alert.severity === 'red' ? 'severity-badge-shimmer' : ''}`}
                   style={{ color: getSeverityColor(alert.severity) }}
                 >
                   {t(`alerts.severityLevels.${alert.severity}`)}
