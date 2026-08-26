@@ -28,6 +28,11 @@ export function SkeletonHero() {
         </div>
         <Skeleton className="h-14 w-14 rounded-2xl" />
       </div>
+      <div className="mt-4 space-y-2">
+        <Skeleton className="h-11 w-full rounded-xl" />
+        <Skeleton className="h-3 w-36" />
+      </div>
+      <Skeleton className="h-12 w-full rounded-2xl mt-4" />
     </div>
   );
 }

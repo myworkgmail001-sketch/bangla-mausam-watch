@@ -17,10 +17,12 @@ const Earthquake = lazy(() => import('./pages/Earthquake'));
 const Admin = lazy(() => import('./pages/Admin'));
 const About = lazy(() => import('./pages/About'));
 
+const EASE = [0.4, 0, 0.2, 1] as const;
+
 const pageVariants = {
-  initial: { opacity: 0, y: 8 },
+  initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
+  exit: { opacity: 0, y: -6 },
 };
 
 function AnimatedRoutes() {
@@ -33,7 +35,7 @@ function AnimatedRoutes() {
         initial="initial"
         animate="animate"
         exit="exit"
-        transition={{ duration: 0.2, ease: 'easeOut' }}
+        transition={{ duration: 0.5, ease: EASE }}
       >
         <Suspense fallback={<Loading />}>
           <Routes location={location}>

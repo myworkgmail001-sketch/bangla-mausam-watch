@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { MapPin, ChevronRight, Bell, AlertTriangle, RefreshCw, Navigation, Loader2, ShieldCheck, Droplets, Wind, Eye, Thermometer, CloudRain, Sunrise, Sunset, CircleDot } from 'lucide-react';
+import { MapPin, ChevronRight, Bell, AlertTriangle, RefreshCw, Navigation, Loader2, ShieldCheck, Droplets, Wind, Eye, Thermometer, CloudRain, Sunrise, Sunset } from 'lucide-react';
 import { useEonetEvents, useOpenMeteo, useAirQuality } from '../hooks/useData';
 import { findNearestDistrict } from '../data/districts';
 import { getWeatherCodeInfo, formatRelativeTime, toBengaliNum, bengaliTime, banglaDayName, getWindLabel, getUVLabel, getAQILabel, getPrecipLabel } from '../utils/helpers';
@@ -104,12 +104,25 @@ function getTrendText(daily: any[]): string {
   return `পরবর্তী ৪ দিন স্থিতিশীল আবহাওয়া →`;
 }
 
-const sectionVariant = (delay: number, reduced: boolean) => ({
-  initial: reduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 },
+// ─── Premium Motion Constants ──────────────────────────────
+const EASE = [0.4, 0, 0.2, 1] as const;  // Signature easing (80% of animations)
+const DUR = { quick: 0.35, standard: 0.5, slow: 0.8 } as const;
+
+// Section entrance: Premium personality — 20px offset, no overshoot, ease-out
+const sectionEnter = (delay: number, reduced?: boolean) => ({
+  initial: reduced ? false : { opacity: 0, y: 20 },
   whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-40px' },
-  transition: { duration: 0.5, ease: 'easeOut', delay },
+  viewport: { once: true, margin: '-30px' },
+  transition: { duration: DUR.standard, ease: EASE, delay },
 });
+
+// Button tap: anticipation → spring settle (Apple-style)
+const btnTap = { scale: 0.97 };
+const btnTransition = { type: 'spring' as const, stiffness: 350, damping: 22 };
+
+// Card tap: paper material — 3-5% overshoot
+const cardTap = { scale: 0.98 };
+const cardTransition = { type: 'spring' as const, stiffness: 300, damping: 24 };
 
 export default function Home() {
   const { t, i18n } = useTranslation();
@@ -160,19 +173,14 @@ export default function Home() {
   const uvInfo = getUVLabel(current?.uvIndex || 0);
   const aqiInfo = getAQILabel(aqi?.european || 0);
 
-  // Count-up for hero numbers
   const tempCountUp = useCountUp(Math.round(current?.temperature || 0), 800, !weatherLoading && !!current);
   const feelsLikeCountUp = useCountUp(Math.round(current?.feelsLike || 0), 800, !weatherLoading && !!current);
   const humidityCountUp = useCountUp(Math.round(current?.humidity || 0), 800, !weatherLoading && !!current);
   const windCountUp = useCountUp(Math.round(current?.windSpeed || 0), 800, !weatherLoading && !!current);
 
-  // Max hourly precip for rain background effect
   const maxPrecipProb = useMemo(() => Math.max(...hourly.map(h => h.precipitationProbability || 0), 0), [hourly]);
-
-  // Next 12 hours for rain accordion
   const next12Hours = useMemo(() => hourly.slice(0, 13), [hourly]);
 
-  // Determine night
   const isNight = useMemo(() => {
     if (!current) return false;
     const now = Date.now();
@@ -228,24 +236,26 @@ export default function Home() {
 
   return (
     <div className="pb-20">
-      {/* Weather Background */}
       {current && (
-        <WeatherBackground
-          weatherCode={current.weatherCode}
-          precipProb={maxPrecipProb}
-          isNight={isNight}
-        />
+        <WeatherBackground weatherCode={current.weatherCode} precipProb={maxPrecipProb} isNight={isNight} />
       )}
 
-      {/* 1. STATUS BANNER + CURRENT TEMP — hero with skeleton */}
+      {/* ═══ 1. HERO — Premium Direct Entrance ═══ */}
       {weatherLoading && !current ? (
         <SkeletonHero />
       ) : (
-        <motion.section {...sectionVariant(0, !!prefersReduced)} className="px-4 pt-5 pb-5 relative z-10">
-          <div className="flex items-center gap-1.5 text-primary-600 font-medium mb-1">
+        <motion.section {...sectionEnter(0, !!prefersReduced)} className="px-4 pt-5 pb-5 relative z-10">
+          {/* Primary: location */}
+          <motion.div
+            className="flex items-center gap-1.5 text-primary-600 font-medium mb-1"
+            initial={prefersReduced ? false : { opacity: 0, x: -8 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: DUR.quick, ease: EASE, delay: 0.1 }}
+          >
             <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="text-sm font-semibold text-heading">{heroLocationLine}</span>
-          </div>
+          </motion.div>
           {hasPreciseLocation && <p className="text-xs text-body/50 ml-5 mb-0.5">{displayDistrict}</p>}
           {userLocation && <p className="text-[10px] text-body/35 ml-5 font-mono mb-3">{formatCoords(effectiveLat, effectiveLng)}</p>}
           {!userLocation && <div className="mb-3" />}
@@ -253,8 +263,14 @@ export default function Home() {
           {outsideWB && <p className="text-xs text-orange-500 font-medium mb-1">{t('home.outside_wb')}</p>}
           {locationStatus === 'denied' && <p className="text-xs text-orange-500 mb-1">{t('home.location_denied')}</p>}
 
-          {/* Status sentence */}
-          <div className="flex items-start gap-2 mb-4">
+          {/* Status sentence — secondary layer, fades 100ms after hero */}
+          <motion.div
+            className="flex items-start gap-2 mb-4"
+            initial={prefersReduced ? false : { opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: DUR.quick, ease: EASE, delay: 0.15 }}
+          >
             <span className="text-lg mt-0.5">{weatherInfo?.icon || '☀️'}</span>
             <div>
               <p className="text-[15px] font-semibold text-heading leading-snug">{statusBanner}</p>
@@ -262,10 +278,16 @@ export default function Home() {
                 <p className="text-xs text-body/50 mt-0.5">{statusTimeEnd} {t('home.status_until')}</p>
               )}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Current Temp Block — Google style with count-up */}
-          <div className="flex items-center justify-between">
+          {/* Temp block — hero element with shadow follow-through */}
+          <motion.div
+            className="flex items-center justify-between"
+            initial={prefersReduced ? false : { opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: DUR.slow, ease: EASE, delay: 0.2 }}
+          >
             <div className="flex items-baseline gap-1">
               <span className="text-[56px] font-poppins font-bold text-heading leading-none tracking-tight">
                 {weatherLoading ? '--' : toBengaliNum(tempCountUp)}
@@ -275,19 +297,26 @@ export default function Home() {
             <div className="flex items-center justify-center">
               <AnimatedWeatherIcon code={current?.weatherCode || 0} size={56} />
             </div>
-          </div>
-          <p className="text-sm text-body/60 mt-1">
+          </motion.div>
+          <motion.p
+            className="text-sm text-body/60 mt-1"
+            initial={prefersReduced ? false : { opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: DUR.quick, ease: EASE, delay: 0.35 }}
+          >
             {t('home.feels_like')} {weatherLoading ? '--' : toBengaliNum(feelsLikeCountUp)}°
-          </p>
+          </motion.p>
 
-          {/* My Location Button + Privacy */}
+          {/* Location buttons — anticipation tap */}
           <div className="mt-4">
             <div className="flex items-center gap-2">
               <motion.button
                 onClick={handleMyLocation}
                 disabled={locationLoading}
-                whileTap={{ scale: 0.97 }}
-                className="flex-1 flex items-center justify-center gap-2 bg-white/80 border border-primary-200 text-primary-600 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-primary-50 disabled:opacity-50"
+                whileTap={btnTap}
+                transition={btnTransition}
+                className="flex-1 flex items-center justify-center gap-2 bg-white/80 border border-primary-200 text-primary-600 py-2.5 rounded-xl text-sm font-medium transition-colors hover:bg-primary-50 disabled:opacity-50"
               >
                 {locationLoading ? <Loader2 className="w-4 h-4 animate-spin-slow" /> : <Navigation className="w-4 h-4" />}
                 <span>{locationLoading ? 'লোকেশন নির্ণয় করছে...' : `📍 ${t('home.my_location')}`}</span>
@@ -295,7 +324,8 @@ export default function Home() {
               {hasSaved.current && !locationLoading && (
                 <motion.button
                   onClick={handleMyLocation}
-                  whileTap={{ scale: 0.95 }}
+                  whileTap={btnTap}
+                  transition={btnTransition}
                   className="px-3 py-2.5 rounded-xl bg-primary-50 text-primary-500 text-xs font-medium hover:bg-primary-100 transition-colors"
                 >
                   {t('home.update_location')}
@@ -308,11 +338,12 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Enable Alerts CTA */}
+          {/* CTA — ambient breathing + anticipation tap */}
           <motion.button
             onClick={() => navigate('/alerts')}
-            whileTap={{ scale: 0.97 }}
-            className="w-full mt-4 flex items-center justify-center gap-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white py-3 rounded-2xl font-semibold text-sm shadow-lg shadow-primary-500/20 hover:shadow-xl transition-shadow"
+            whileTap={btnTap}
+            transition={btnTransition}
+            className="w-full mt-4 flex items-center justify-center gap-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white py-3 rounded-2xl font-semibold text-sm shadow-lg shadow-primary-500/20 transition-shadow hover:shadow-xl"
           >
             <Bell className="w-4 h-4" />
             {t('home.enable_alerts')}
@@ -321,11 +352,11 @@ export default function Home() {
         </motion.section>
       )}
 
-      {/* 2. HOURLY ROW */}
+      {/* ═══ 2. HOURLY ROW — Wave Stagger ═══ */}
       {weatherLoading && !current ? (
         <SkeletonHourlyRow />
       ) : hourly.length > 0 && (
-        <motion.section {...sectionVariant(0.08, !!prefersReduced)} className="px-4 mt-2 relative z-10">
+        <motion.section {...sectionEnter(0.08, !!prefersReduced)} className="px-4 mt-2 relative z-10">
           <h3 className="text-xs font-semibold text-body/60 uppercase tracking-wider mb-2 px-1">{t('home.hourly_title')}</h3>
           <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory -mx-4 px-4 scrollbar-hide">
             {hourly.map((h, i) => {
@@ -336,7 +367,15 @@ export default function Home() {
               return (
                 <motion.div
                   key={i}
-                  whileTap={{ scale: 0.96 }}
+                  initial={prefersReduced ? false : { opacity: 0, y: 12, scale: 0.95 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{
+                    duration: DUR.quick,
+                    ease: EASE,
+                    delay: i * 0.04,  // Wave stagger: 40ms per tile
+                  }}
+                  whileTap={cardTap}
                   className={`flex-shrink-0 w-[72px] snap-center rounded-2xl p-2.5 text-center transition-colors ${isRainy ? 'bg-primary-50 border border-primary-100' : 'bg-white border border-gray-100'}`}
                 >
                   <p className="text-[11px] font-medium text-body/60 mb-1">{isNow ? t('home.now') : `${toBengaliNum(hr)}:০০`}</p>
@@ -350,10 +389,20 @@ export default function Home() {
         </motion.section>
       )}
 
-      {/* 3. TREND + 7-DAY */}
+      {/* ═══ 3. TREND + 7-DAY — Micro Cascade ═══ */}
       {daily.length > 0 && (
-        <motion.section {...sectionVariant(0.16, !!prefersReduced)} className="px-4 mt-3 relative z-10">
-          {trendText && <p className="text-xs text-body/60 mb-2 px-1">{trendText}</p>}
+        <motion.section {...sectionEnter(0.16, !!prefersReduced)} className="px-4 mt-3 relative z-10">
+          {trendText && (
+            <motion.p
+              className="text-xs text-body/60 mb-2 px-1"
+              initial={prefersReduced ? false : { opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: DUR.quick, ease: EASE, delay: 0.2 }}
+            >
+              {trendText}
+            </motion.p>
+          )}
           <div className="glass-card p-3 space-y-0">
             {daily.map((day, i) => {
               const info = getWeatherCodeInfo(day.weatherCode);
@@ -361,7 +410,15 @@ export default function Home() {
               return (
                 <motion.div
                   key={day.date}
-                  whileTap={{ scale: 0.98 }}
+                  initial={prefersReduced ? false : { opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{
+                    duration: DUR.quick,
+                    ease: EASE,
+                    delay: 0.25 + i * 0.05,  // Micro cascade: 50ms stagger
+                  }}
+                  whileTap={cardTap}
                   className={`flex items-center gap-3 py-2.5 ${i < daily.length - 1 ? 'border-b border-gray-100' : ''} ${isToday ? 'bg-primary-50/30 -mx-3 px-3 rounded-xl' : ''}`}
                 >
                   <span className={`text-xs w-10 ${isToday ? 'font-bold text-primary-600' : 'font-medium text-heading'}`}>
@@ -386,12 +443,12 @@ export default function Home() {
         </motion.section>
       )}
 
-      {/* 4. ACCORDION DETAIL CARDS */}
+      {/* ═══ 4. ACCORDION CARDS — Coordinated Entry ═══ */}
       {weatherLoading && !current ? (
         <SkeletonCards />
       ) : (
-        <motion.section {...sectionVariant(0.24, !!prefersReduced)} className="px-4 mt-3 space-y-2 relative z-10">
-          {/* Precipitation — next 12 hours with time labels + % above bars + color scale */}
+        <motion.section {...sectionEnter(0.24, !!prefersReduced)} className="px-4 mt-3 space-y-2 relative z-10">
+          {/* Precipitation */}
           {daily.length > 0 && (
             <AccordionCard
               title={`${t('home.precipitation_title')} · ${daily[0]?.precipitationProbability || 0}%`}
@@ -399,16 +456,15 @@ export default function Home() {
               accentColor="#3B82F6"
             >
               <div className="flex gap-2">
-                {/* Bars */}
                 <div className="flex-1">
                   <div className="flex items-end gap-1.5 h-28">
                     {next12Hours.map((h, i) => {
                       const prob = h.precipitationProbability || 0;
                       const hr = new Date(h.time).getHours();
                       const label = i === 0 ? 'এখন' : `${toBengaliNum(hr)}:০০`;
-                      let barColor = '#93C5FD'; // light blue
-                      if (prob > 70) barColor = '#1D4ED8'; // deep blue
-                      else if (prob > 40) barColor = '#3B82F6'; // mid blue
+                      let barColor = '#93C5FD';
+                      if (prob > 70) barColor = '#1D4ED8';
+                      else if (prob > 40) barColor = '#3B82F6';
                       return (
                         <div key={i} className="flex-1 flex flex-col items-center justify-end gap-0.5">
                           {prob > 0 && (
@@ -421,7 +477,7 @@ export default function Home() {
                               initial={{ height: 0 }}
                               whileInView={{ height: `${Math.max(prob, 2)}%` }}
                               viewport={{ once: true }}
-                              transition={{ duration: 0.6, ease: 'easeOut', delay: i * 0.05 }}
+                              transition={{ duration: 0.6, ease: EASE, delay: i * 0.04 }}
                             />
                           </div>
                           <span className="text-[7px] text-body/40 leading-none mt-0.5 whitespace-nowrap">{label}</span>
@@ -430,7 +486,6 @@ export default function Home() {
                     })}
                   </div>
                 </div>
-                {/* Color scale */}
                 <div className="flex flex-col justify-between py-0.5 w-6">
                   <div className="flex items-center gap-0.5">
                     <span className="w-1.5 h-3 rounded-sm bg-primary-200" />
@@ -497,7 +552,7 @@ export default function Home() {
             </AccordionCard>
           )}
 
-          {/* Temperature detail */}
+          {/* Temperature */}
           {current && (
             <AccordionCard
               title={`${t('home.temp_title')} · ${toBengaliNum(Math.round(current.temperature || 0))}° (অনুভূত ${toBengaliNum(Math.round(current.feelsLike || 0))}°)`}
@@ -551,17 +606,18 @@ export default function Home() {
         </motion.section>
       )}
 
-      {/* 5. WARNING STRIP */}
-      <motion.section {...sectionVariant(0.32, !!prefersReduced)} className="px-4 mt-3 relative z-10">
+      {/* ═══ 5. WARNING STRIP ═══ */}
+      <motion.section {...sectionEnter(0.32, !!prefersReduced)} className="px-4 mt-3 relative z-10">
         <WarningStrip />
       </motion.section>
 
-      {/* 6. EVENTS + MINI MAP */}
-      <motion.section {...sectionVariant(0.40, !!prefersReduced)} className="px-4 mt-3 relative z-10">
+      {/* ═══ 6. EVENTS + MINI MAP ═══ */}
+      <motion.section {...sectionEnter(0.40, !!prefersReduced)} className="px-4 mt-3 relative z-10">
         <motion.div
           className="glass-card p-4 flex items-center justify-between"
           onClick={() => navigate('/map')}
-          whileTap={{ scale: 0.98 }}
+          whileTap={cardTap}
+          transition={cardTransition}
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-primary-500 flex items-center justify-center">
@@ -587,8 +643,8 @@ export default function Home() {
         </div>
       </motion.section>
 
-      {/* 7. DISTRICT GRID */}
-      <motion.section {...sectionVariant(0.48, !!prefersReduced)} className="px-4 mt-3 relative z-10">
+      {/* ═══ 7. DISTRICT GRID ═══ */}
+      <motion.section {...sectionEnter(0.48, !!prefersReduced)} className="px-4 mt-3 relative z-10">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-body/60 uppercase tracking-wider">{t('home.districts_of_wb')}</h3>
           <button onClick={() => navigate('/districts')} className="text-xs text-primary-500 font-medium">{t('home.view_all')}</button>
@@ -596,12 +652,10 @@ export default function Home() {
         <DistrictGrid compact />
       </motion.section>
 
-      {/* Data Updated — with spinning ring when refetching */}
+      {/* Data Updated */}
       <div className="px-4 py-3 mt-2 text-center relative z-10">
         <p className="text-[10px] text-body/40 flex items-center justify-center gap-1.5">
-          {weatherLoading && (
-            <Loader2 className="w-3 h-3 animate-spin-slow text-primary-400" />
-          )}
+          {weatherLoading && <Loader2 className="w-3 h-3 animate-spin-slow text-primary-400" />}
           {t('home.data_updated')}: {recentUpdated || t('home.just_now')}
         </p>
       </div>

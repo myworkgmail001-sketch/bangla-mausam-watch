@@ -5,6 +5,8 @@ import { Home, Map, Users, Bell, ShieldAlert, AlertTriangle } from 'lucide-react
 import OfflineBanner from './OfflineBanner';
 import Footer from './Footer';
 
+const EASE = [0.4, 0, 0.2, 1] as const;
+
 const navItems = [
   { path: '/', icon: Home, labelKey: 'nav.home' },
   { path: '/map', icon: Map, labelKey: 'nav.map' },
@@ -77,13 +79,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
+                <motion.div
+                  animate={isActive ? { y: -1 } : { y: 0 }}
+                  transition={{ duration: 0.2, ease: EASE }}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
+                </motion.div>
                 {isActive && (
                   <motion.div
                     className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary-500"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 18 }}
                   />
                 )}
                 <span className={`text-[10px] font-medium ${isActive ? 'text-primary-600' : ''}`}>
